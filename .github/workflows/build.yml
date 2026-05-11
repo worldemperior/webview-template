@@ -57,4 +57,4 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: app/build/outputs/apk/release/
-          server-dir: /public_html/apks/
+          server-dir: /
