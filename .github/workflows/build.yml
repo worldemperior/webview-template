@@ -1,4 +1,4 @@
-name: Build APK
+name: Build App
 
 on:
   repository_dispatch:
@@ -39,14 +39,23 @@ jobs:
 
           find . -type f -exec sed -i "s|PACKAGE_PLACEHOLDER|${{ github.event.client_payload.packageName }}|g" {} +
 
+          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|${{ github.event.client_payload.admobAppId }}|g" {} +
+
           find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|${{ github.event.client_payload.bannerAdId }}|g" {} +
 
           find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|${{ github.event.client_payload.interstitialAdId }}|g" {} +
-          
-          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|${{ github.event.client_payload.admobAppId }}|g" {} +
 
-      - name: Build APK
-        run: chmod +x gradlew && ./gradlew assembleRelease bundleRelease
+      - name: Build APK and AAB
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease bundleRelease
+
+      - name: Rename APK
+        run: |
+
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+
+          mv "$APK" "app/build/outputs/apk/release/${{ github.event.client_payload.packageName }}.apk"
 
       - name: Rename AAB
         run: |
@@ -55,7 +64,16 @@ jobs:
 
           mv "$AAB" "app/build/outputs/bundle/release/${{ github.event.client_payload.packageName }}.aab"
 
-      - name: Upload APK to Hosting
+      - name: Upload APK
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: app/build/outputs/apk/release/
+          server-dir: /
+
+      - name: Upload AAB
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -63,3 +81,11 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: app/build/outputs/bundle/release/
           server-dir: /
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-files
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
