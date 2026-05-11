@@ -50,42 +50,35 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease bundleRelease
 
-      - name: Rename APK
+      - name: Create Output Folder
+        run: |
+          mkdir final-output
+
+      - name: Copy APK
         run: |
 
-          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          APK_FILE=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
 
-          mv "$APK" "app/build/outputs/apk/release/${{ github.event.client_payload.packageName }}.apk"
+          cp "$APK_FILE" "final-output/${{ github.event.client_payload.packageName }}.apk"
 
-      - name: Rename AAB
+      - name: Copy AAB
         run: |
 
-          AAB=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
+          AAB_FILE=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
 
-          mv "$AAB" "app/build/outputs/bundle/release/${{ github.event.client_payload.packageName }}.aab"
+          cp "$AAB_FILE" "final-output/${{ github.event.client_payload.packageName }}.aab"
 
-      - name: Upload APK
+      - name: Upload Files To Hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: app/build/outputs/apk/release/
+          local-dir: final-output/
           server-dir: /
 
-      - name: Upload AAB
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: app/build/outputs/bundle/release/
-          server-dir: /
-
-      - name: Upload Build Artifacts
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: generated-files
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
+          path: final-output/
