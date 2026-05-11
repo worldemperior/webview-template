@@ -1,132 +1,94 @@
 package com.template.webview
 
 import android.annotation.SuppressLint
-import android.app.DownloadManager
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.webkit.*
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.viewinterop.AndroidView
+import com.google.android.gms.ads.*
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
 
+    private var interstitialAd: InterstitialAd? = null
+
+    private var clickCount = 0
+
+    private val bannerAdId =
+        "BANNER_AD_ID_PLACEHOLDER"
+
+    private val interstitialAdId =
+        "INTERSTITIAL_AD_ID_PLACEHOLDER"
+
     @SuppressLint("SetJavaScriptEnabled")
+
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
 
-        setContent {
+        MobileAds.initialize(this)
 
-            MaterialTheme {
+        webView = WebView(this)
 
-                Surface(modifier = Modifier.fillMaxSize()) {
+        setContentView(webView)
 
-                    var loading by remember {
-                        mutableStateOf(true)
+        webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
+
+        loadInterstitial()
+
+        webView.webViewClient =
+            object : WebViewClient() {
+
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: WebResourceRequest?
+                ): Boolean {
+
+                    clickCount++
+
+                    if (
+                        clickCount >= 4 &&
+                        interstitialAd != null
+                    ) {
+
+                        interstitialAd?.show(this@MainActivity)
+
+                        clickCount = 0
                     }
 
-                    AndroidView(factory = {
-
-                        webView = WebView(it)
-
-                        webView.settings.javaScriptEnabled = true
-                        webView.settings.domStorageEnabled = true
-                        webView.settings.allowFileAccess = true
-
-                        webView.webChromeClient = WebChromeClient()
-
-                        webView.webViewClient =
-                            object : WebViewClient() {
-
-                                override fun shouldOverrideUrlLoading(
-                                    view: WebView?,
-                                    request: WebResourceRequest?
-                                ): Boolean {
-
-                                    val url =
-                                        request?.url.toString()
-
-                                    if (
-                                        url.startsWith("mailto:") ||
-                                        url.startsWith("tel:")
-                                    ) {
-
-                                        startActivity(
-                                            Intent(
-                                                Intent.ACTION_VIEW,
-                                                Uri.parse(url)
-                                            )
-                                        )
-
-                                        return true
-                                    }
-
-                                    return false
-                                }
-
-                                override fun onPageFinished(
-                                    view: WebView?,
-                                    url: String?
-                                ) {
-                                    loading = false
-                                }
-                            }
-
-                        webView.setDownloadListener {
-                                url, _, _, _, _ ->
-
-                            val request =
-                                DownloadManager.Request(
-                                    Uri.parse(url)
-                                )
-
-                            request.setNotificationVisibility(
-                                DownloadManager.Request
-                                    .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                            )
-
-                            val manager =
-                                getSystemService(
-                                    Context.DOWNLOAD_SERVICE
-                                ) as DownloadManager
-
-                            manager.enqueue(request)
-                        }
-
-                        webView.loadUrl(
-                            "URL_PLACEHOLDER"
-                        )
-
-                        webView
-                    })
-
-                    if (loading) {
-                        CircularProgressIndicator()
-                    }
+                    return false
                 }
             }
-        }
+
+        webView.loadUrl("URL_PLACEHOLDER")
     }
 
-    override fun onBackPressed() {
+    private fun loadInterstitial() {
 
-        if (
-            ::webView.isInitialized &&
-            webView.canGoBack()
-        ) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+        if (interstitialAdId.isBlank()) {
+            return
         }
+
+        val adRequest =
+            AdRequest.Builder().build()
+
+        InterstitialAd.load(
+            this,
+            interstitialAdId,
+            adRequest,
+
+            object : InterstitialAdLoadCallback() {
+
+                override fun onAdLoaded(ad: InterstitialAd) {
+
+                    interstitialAd = ad
+                }
+            }
+        )
     }
 }
