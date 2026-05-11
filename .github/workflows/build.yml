@@ -42,13 +42,18 @@ jobs:
           find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|${{ github.event.client_payload.bannerAdId }}|g" {} +
 
           find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|${{ github.event.client_payload.interstitialAdId }}|g" {} +
+          
+          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|${{ github.event.client_payload.admobAppId }}|g" {} +
 
       - name: Build APK
-        run: chmod +x gradlew && ./gradlew assembleRelease
+        run: chmod +x gradlew && ./gradlew assembleRelease bundleRelease
 
-      - name: Rename APK
+      - name: Rename AAB
         run: |
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/${{ github.event.client_payload.packageName }}.apk
+
+          AAB=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
+
+          mv "$AAB" "app/build/outputs/bundle/release/${{ github.event.client_payload.packageName }}.aab"
 
       - name: Upload APK to Hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -56,5 +61,5 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: app/build/outputs/apk/release/
+          local-dir: app/build/outputs/bundle/release/
           server-dir: /
