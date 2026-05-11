@@ -1,0 +1,44 @@
+name: Build APK
+
+on:
+  repository_dispatch:
+    types: [build-apk]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.jks
+
+      - name: Replace Placeholders
+        run: |
+
+          find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.client_payload.appName }}|g" {} +
+
+          find . -type f -exec sed -i "s|URL_PLACEHOLDER|${{ github.event.client_payload.websiteUrl }}|g" {} +
+
+          find . -type f -exec sed -i "s|PACKAGE_PLACEHOLDER|${{ github.event.client_payload.packageName }}|g" {} +
+
+      - name: Build APK
+        run: chmod +x gradlew && ./gradlew assembleRelease
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-apk
+          path: app/build/outputs/apk/release/*.apk
