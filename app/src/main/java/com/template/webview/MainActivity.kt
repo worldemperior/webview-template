@@ -114,8 +114,7 @@ class MainActivity : ComponentActivity() {
         root.addView(webView)
 
         if (
-            bannerAdId.isNotBlank() &&
-            bannerAdId != "BANNER_AD_ID_PLACEHOLDER"
+            bannerAdId != "BANNER_DISABLED"
         ) {
 
             MobileAds.initialize(this)
@@ -138,8 +137,7 @@ class MainActivity : ComponentActivity() {
         }
 
         if (
-            interstitialAdId.isNotBlank() &&
-            interstitialAdId != "INTERSTITIAL_AD_ID_PLACEHOLDER"
+            interstitialAdId != "INTERSTITIAL_DISABLED"
         ) {
 
             MobileAds.initialize(this)
