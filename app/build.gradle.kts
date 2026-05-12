@@ -1,13 +1,13 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
 
     namespace = "PACKAGE_PLACEHOLDER"
 
-    compileSdk = 35
+    compileSdk = 36
 
     signingConfigs {
 
@@ -39,10 +39,10 @@ android {
             "PACKAGE_PLACEHOLDER"
 
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
 
         versionCode =
-            System.currentTimeMillis()
+            (System.currentTimeMillis() / 1000)
                 .toInt()
 
         versionName =
@@ -71,9 +71,9 @@ android {
             JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
+    buildFeatures {
 
-        jvmTarget = "17"
+        compose = true
     }
 }
 
