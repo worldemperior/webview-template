@@ -2,6 +2,7 @@ package PACKAGE_PLACEHOLDER
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
@@ -9,7 +10,10 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.LinearLayout
 import androidx.activity.ComponentActivity
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
@@ -25,9 +29,6 @@ class MainActivity : ComponentActivity() {
 
     private var clickCount = 0
 
-    private val admobAppId =
-        "ADMOB_APP_ID_PLACEHOLDER"
-
     private val bannerAdId =
         "BANNER_AD_ID_PLACEHOLDER"
 
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(
             window,
-            true
+            false
         )
 
         val root =
@@ -57,12 +58,42 @@ class MainActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
+        root.fitsSystemWindows = true
+
+        ViewCompat.setOnApplyWindowInsetsListener(
+            root
+        ) { view, insets ->
+
+            val systemBars: Insets =
+
+                insets.getInsets(
+                    WindowInsetsCompat.Type.systemBars()
+                )
+
+            view.setPadding(
+
+                systemBars.left,
+
+                systemBars.top,
+
+                systemBars.right,
+
+                systemBars.bottom
+            )
+
+            insets
+        }
+
         webView = WebView(this)
 
         webView.layoutParams =
+
             LinearLayout.LayoutParams(
+
                 ViewGroup.LayoutParams.MATCH_PARENT,
+
                 0,
+
                 1f
             )
 
@@ -75,25 +106,25 @@ class MainActivity : ComponentActivity() {
         webView.settings.loadsImagesAutomatically =
             true
 
-        webView.settings.mixedContentMode =
-            WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-
         webView.settings.allowFileAccess =
             true
 
         webView.settings.allowContentAccess =
             true
 
-        webView.settings.setSupportZoom(
-            false
-        )
+        webView.settings.mixedContentMode =
+            WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
         webView.webViewClient =
+
             object : WebViewClient() {
 
                 override fun shouldOverrideUrlLoading(
+
                     view: WebView?,
+
                     request: WebResourceRequest?
+
                 ): Boolean {
 
                     clickCount++
@@ -129,6 +160,15 @@ class MainActivity : ComponentActivity() {
             adView.adUnitId =
                 bannerAdId
 
+            adView.layoutParams =
+
+                LinearLayout.LayoutParams(
+
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+
             adView.loadAd(
                 AdRequest.Builder().build()
             )
@@ -137,7 +177,8 @@ class MainActivity : ComponentActivity() {
         }
 
         if (
-            interstitialAdId != "INTERSTITIAL_DISABLED"
+            interstitialAdId !=
+            "INTERSTITIAL_DISABLED"
         ) {
 
             MobileAds.initialize(this)
