@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -69,11 +68,6 @@ android {
 
         targetCompatibility =
             JavaVersion.VERSION_17
-    }
-
-    buildFeatures {
-
-        compose = true
     }
 }
 
