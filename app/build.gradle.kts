@@ -1,43 +1,53 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
 
-    namespace = "com.template.webview"
+    namespace = "PACKAGE_PLACEHOLDER"
 
-    compileSdk = 36
+    compileSdk = 35
 
     signingConfigs {
 
         create("release") {
 
-            storeFile = file("../release.jks")
+            storeFile =
+                file("../release.jks")
 
             storePassword =
-                System.getenv("KEYSTORE_PASSWORD")
+                System.getenv(
+                    "KEYSTORE_PASSWORD"
+                )
 
             keyAlias =
-                System.getenv("KEY_ALIAS")
+                System.getenv(
+                    "KEY_ALIAS"
+                )
 
             keyPassword =
-                System.getenv("KEY_PASSWORD")
+                System.getenv(
+                    "KEY_PASSWORD"
+                )
         }
     }
 
     defaultConfig {
 
-        applicationId = "com.template.webview"
+        applicationId =
+            "PACKAGE_PLACEHOLDER"
 
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
 
-        versionCode = 1
-        versionName = "1.0"
+        versionCode =
+            System.currentTimeMillis()
+                .toInt()
 
-        testInstrumentationRunner =
-            "androidx.test.runner.AndroidJUnitRunner"
+        versionName =
+            System.currentTimeMillis()
+                .toString()
     }
 
     buildTypes {
@@ -47,14 +57,8 @@ android {
             isMinifyEnabled = false
 
             signingConfig =
-                signingConfigs.getByName("release")
-
-            proguardFiles(
-                getDefaultProguardFile(
-                    "proguard-android-optimize.txt"
-                ),
-                "proguard-rules.pro"
-            )
+                signingConfigs
+                    .getByName("release")
         }
     }
 
@@ -67,9 +71,9 @@ android {
             JavaVersion.VERSION_17
     }
 
-    buildFeatures {
+    kotlinOptions {
 
-        compose = true
+        jvmTarget = "17"
     }
 }
 
@@ -80,23 +84,11 @@ dependencies {
     )
 
     implementation(
-        "androidx.lifecycle:lifecycle-runtime-ktx:2.10.0"
+        "androidx.appcompat:appcompat:1.7.1"
     )
 
     implementation(
-        "androidx.activity:activity-compose:1.13.0"
-    )
-
-    implementation(
-        "androidx.compose.ui:ui:1.11.1"
-    )
-
-    implementation(
-        "androidx.compose.ui:ui-tooling-preview:1.11.1"
-    )
-
-    implementation(
-        "androidx.compose.material3:material3:1.4.0"
+        "com.google.android.material:material:1.13.0"
     )
 
     implementation(
@@ -104,10 +96,10 @@ dependencies {
     )
 
     implementation(
-        "com.google.android.material:material:1.13.0"
+        "com.google.android.gms:play-services-ads:25.2.0"
     )
 
-    implementation("com.google.android.gms:play-services-ads:25.2.0")
-
-    implementation("com.google.android.ump:user-messaging-platform:4.0.0")
+    implementation(
+        "com.google.android.ump:user-messaging-platform:4.0.0"
+    )
 }
