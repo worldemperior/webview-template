@@ -87,9 +87,17 @@ jobs:
       - name: Replace Splash Image
         run: |
 
-          if [ -f splash.png ]; then
+          if file splash.png | grep -q "image"; then
 
-          cp splash.png app/src/main/res/drawable/splash_image.png
+            convert splash.png \
+              -resize 1080x1920^ \
+              -gravity center \
+              -extent 1080x1920 \
+              PNG32:app/src/main/res/drawable/splash_image.png
+
+          else
+
+            echo "Invalid splash image"
 
           fi
 
