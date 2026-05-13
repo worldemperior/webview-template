@@ -188,9 +188,40 @@ class MainActivity : ComponentActivity() {
 
         setContentView(root)
 
-        webView.loadUrl(
-            "URL_PLACEHOLDER"
-        )
+        val contentType =
+            "CONTENT_TYPE_PLACEHOLDER"
+
+        if (
+            contentType == "WEBSITE"
+        ) {
+
+            webView.loadUrl(
+                "URL_PLACEHOLDER"
+            )
+
+        } else if (
+            contentType == "HTML_CODE"
+        ) {
+
+            webView.loadDataWithBaseURL(
+
+                null,
+
+                """HTML_CODE_PLACEHOLDER""",
+
+                "text/html",
+
+                "UTF-8",
+
+                null
+            )
+
+        } else {
+
+            webView.loadUrl(
+                "file:///android_asset/index.html"
+            )
+        }
     }
 
     private fun loadInterstitial() {
