@@ -119,13 +119,15 @@ class MainActivity : ComponentActivity() {
 
             object : WebViewClient() {
 
-                override fun shouldOverrideUrlLoading(
-
+                override fun onPageFinished(
                     view: WebView?,
+                    url: String?
+                ) {
 
-                    request: WebResourceRequest?
-
-                ): Boolean {
+                    super.onPageFinished(
+                        view,
+                        url
+                    )
 
                     clickCount++
 
@@ -137,8 +139,6 @@ class MainActivity : ComponentActivity() {
 
                         clickCount = 0
                     }
-
-                    return false
                 }
             }
 
