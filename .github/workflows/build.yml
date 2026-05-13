@@ -66,6 +66,10 @@ jobs:
       - name: Generate Launcher Icons
         run: |
 
+          rm -f app/src/main/res/mipmap-*/ic_launcher.webp
+
+          rm -f app/src/main/res/mipmap-*/ic_launcher_round.webp
+
           if file icon.png | grep -q "image"; then
 
             convert icon.png -resize 48x48 PNG32:app/src/main/res/mipmap-mdpi/ic_launcher.png
