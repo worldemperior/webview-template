@@ -66,7 +66,7 @@ jobs:
       - name: Generate Launcher Icons
         run: |
 
-          if [ -f icon.png ]; then
+          if file icon.png | grep -q "image"; then
 
             convert icon.png -resize 48x48 app/src/main/res/mipmap-mdpi/ic_launcher.png
 
@@ -77,6 +77,10 @@ jobs:
             convert icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
 
             convert icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+          else
+
+            echo "Invalid icon image"
 
           fi
 
