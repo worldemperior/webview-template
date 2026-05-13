@@ -56,6 +56,13 @@ jobs:
 
           wget "${{ github.event.client_payload.splashUrl }}" -O splash.png || true
 
+      - name: Install ImageMagick
+        run: |
+
+          sudo apt-get update
+
+          sudo apt-get install -y imagemagick
+
       - name: Generate Launcher Icons
         run: |
 
