@@ -44,6 +44,43 @@ jobs:
           find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|${{ github.event.client_payload.bannerAdId }}|g" {} +
 
           find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|${{ github.event.client_payload.interstitialAdId }}|g" {} +
+          
+          find . -type f -exec sed -i "s|ICON_URL_PLACEHOLDER|${{ github.event.client_payload.iconUrl }}|g" {} +
+  
+          find . -type f -exec sed -i "s|SPLASH_URL_PLACEHOLDER|${{ github.event.client_payload.splashUrl }}|g" {} +
+
+      - name: Download Images
+        run: |
+
+          wget "${{ github.event.client_payload.iconUrl }}" -O icon.png || true
+
+          wget "${{ github.event.client_payload.splashUrl }}" -O splash.png || true
+
+      - name: Generate Launcher Icons
+        run: |
+
+          if [ -f icon.png ]; then
+
+            convert icon.png -resize 48x48 app/src/main/res/mipmap-mdpi/ic_launcher.png
+
+            convert icon.png -resize 72x72 app/src/main/res/mipmap-hdpi/ic_launcher.png
+
+            convert icon.png -resize 96x96 app/src/main/res/mipmap-xhdpi/ic_launcher.png
+
+            convert icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+
+            convert icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+          fi
+
+      - name: Replace Splash Image
+        run: |
+
+          if [ -f splash.png ]; then
+
+          cp splash.png app/src/main/res/drawable/splash_image.png
+
+          fi
 
       - name: Build APK and AAB
         run: |
