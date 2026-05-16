@@ -195,9 +195,40 @@ class MainActivity : ComponentActivity() {
             contentType == "WEBSITE"
         ) {
 
-            webView.loadUrl(
-                "URL_PLACEHOLDER"
-            )
+            val contentType =
+                "CONTENT_TYPE_PLACEHOLDER"
+
+            if (
+                contentType == "WEBSITE"
+            ) {
+
+                webView.loadUrl(
+                    "URL_PLACEHOLDER"
+                )
+
+            } else if (
+                contentType == "HTML_CODE"
+            ) {
+
+                webView.loadDataWithBaseURL(
+
+                    null,
+
+                    """HTML_CODE_PLACEHOLDER""",
+
+                    "text/html",
+
+                    "UTF-8",
+
+                    null
+                )
+
+            } else {
+
+                webView.loadUrl(
+                    "HTML_CODE_PLACEHOLDER"
+                )
+            }
 
         } else if (
             contentType == "HTML_CODE"

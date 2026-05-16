@@ -49,6 +49,10 @@ jobs:
   
           find . -type f -exec sed -i "s|SPLASH_URL_PLACEHOLDER|${{ github.event.client_payload.splashUrl }}|g" {} +
 
+          find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|${{ github.event.client_payload.contentType }}|g" {} +
+  
+          find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|${{ github.event.client_payload.htmlCode }}|g" {} +
+
       - name: Download Images
         run: |
 
