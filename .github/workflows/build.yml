@@ -26,9 +26,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Decode Keystore
+      - name: Install ImageMagick
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.jks
+
+          sudo apt-get update
+
+          sudo apt-get install -y imagemagick
 
       - name: Replace Placeholders
         run: |
@@ -44,28 +47,40 @@ jobs:
           find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|${{ github.event.client_payload.bannerAdId }}|g" {} +
 
           find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|${{ github.event.client_payload.interstitialAdId }}|g" {} +
-          
-          find . -type f -exec sed -i "s|ICON_URL_PLACEHOLDER|${{ github.event.client_payload.iconUrl }}|g" {} +
-  
-          find . -type f -exec sed -i "s|SPLASH_URL_PLACEHOLDER|${{ github.event.client_payload.splashUrl }}|g" {} +
+
+          find . -type f -exec sed -i "s|VERSION_NAME_PLACEHOLDER|${{ github.event.client_payload.versionName }}|g" {} +
+
+          find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|${{ github.event.client_payload.versionCode }}|g" {} +
 
           find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|${{ github.event.client_payload.contentType }}|g" {} +
-  
+
           find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|${{ github.event.client_payload.htmlCode }}|g" {} +
 
       - name: Download Images
         run: |
 
-          wget "${{ github.event.client_payload.iconUrl }}" -O icon.png || true
+          if [ ! -z "${{ github.event.client_payload.iconUrl }}" ]; then
 
-          wget "${{ github.event.client_payload.splashUrl }}" -O splash.png || true
+            wget "${{ github.event.client_payload.iconUrl }}" -O icon.png || true
 
-      - name: Install ImageMagick
+          fi
+
+          if [ ! -z "${{ github.event.client_payload.splashUrl }}" ]; then
+
+            wget "${{ github.event.client_payload.splashUrl }}" -O splash.png || true
+
+          fi
+
+      - name: Download HTML File
         run: |
 
-          sudo apt-get update
+          mkdir -p app/src/main/assets
 
-          sudo apt-get install -y imagemagick
+          if [ "${{ github.event.client_payload.contentType }}" = "HTML_FILE" ]; then
+
+            wget "${{ github.event.client_payload.htmlCode }}" -O app/src/main/assets/index.html || true
+
+          fi
 
       - name: Generate Launcher Icons
         run: |
@@ -84,7 +99,7 @@ jobs:
 
           rm -f app/src/main/res/mipmap-*/ic_launcher_round.webp
 
-          if file icon.png | grep -q "image"; then
+          if [ -f icon.png ]; then
 
             convert icon.png -resize 48x48 PNG32:app/src/main/res/mipmap-mdpi/ic_launcher.png
 
@@ -106,16 +121,14 @@ jobs:
 
             cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
 
-          else
-
-            echo "Invalid icon image"
-
           fi
 
       - name: Replace Splash Image
         run: |
 
-          if file splash.png | grep -q "image"; then
+          mkdir -p app/src/main/res/drawable
+
+          if [ -f splash.png ]; then
 
             convert splash.png \
               -resize 1080x1920^ \
@@ -123,30 +136,23 @@ jobs:
               -extent 1080x1920 \
               PNG32:app/src/main/res/drawable/splash_image.png
 
-          else
-
-            echo "Invalid splash image"
-
           fi
 
-      - name: Download HTML File
+      - name: Decode Keystore
         run: |
 
-          mkdir -p app/src/main/assets
-
-          if [ "${{ github.event.client_payload.contentType }}" = "HTML_FILE" ]; then
-
-          wget "${{ github.event.client_payload.htmlCode }}" -O app/src/main/assets/index.html
-
-          fi
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.jks
 
       - name: Build APK and AAB
         run: |
+
           chmod +x gradlew
+
           ./gradlew assembleRelease bundleRelease
 
       - name: Create Output Folder
         run: |
+
           mkdir final-output
 
       - name: Copy APK
@@ -163,17 +169,36 @@ jobs:
 
           cp "$AAB_FILE" "final-output/${{ github.event.client_payload.packageName }}.aab"
 
-      - name: Upload Files To Hosting
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: final-output/
-          server-dir: /
+      - name: Generate Build Info
+        run: |
 
-      - name: Upload Artifacts
+          echo "App Name: ${{ github.event.client_payload.appName }}" > build-info.txt
+
+          echo "Package ID: ${{ github.event.client_payload.packageName }}" >> build-info.txt
+
+          echo "Version Name: ${{ github.event.client_payload.versionName }}" >> build-info.txt
+
+          echo "Version Code: ${{ github.event.client_payload.versionCode }}" >> build-info.txt
+
+      - name: Create ZIP Package
+        run: |
+
+          mkdir package
+
+          cp final-output/*.apk package/ || true
+
+          cp final-output/*.aab package/ || true
+
+          cp build-info.txt package/ || true
+
+          cp icon.png package/ || true
+
+          cp splash.png package/ || true
+
+          zip -r build-package.zip package
+
+      - name: Upload ZIP Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: generated-files
-          path: final-output/
+          name: build-package
+          path: build-package.zip
