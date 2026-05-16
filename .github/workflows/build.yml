@@ -36,38 +36,38 @@ jobs:
       - name: Replace Placeholders
         run: |
 
-          find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.client_payload.appName }}|g" {} +
+          find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.client_payload.config.appName }}|g" {} +
 
-          find . -type f -exec sed -i "s|URL_PLACEHOLDER|${{ github.event.client_payload.websiteUrl }}|g" {} +
+          find . -type f -exec sed -i "s|URL_PLACEHOLDER|${{ github.event.client_payload.config.websiteUrl }}|g" {} +
 
-          find . -type f -exec sed -i "s|PACKAGE_PLACEHOLDER|${{ github.event.client_payload.packageName }}|g" {} +
+          find . -type f -exec sed -i "s|PACKAGE_PLACEHOLDER|${{ github.event.client_payload.config.packageName }}|g" {} +
 
-          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|${{ github.event.client_payload.admobAppId }}|g" {} +
+          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|${{ github.event.client_payload.config.admobAppId }}|g" {} +
 
-          find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|${{ github.event.client_payload.bannerAdId }}|g" {} +
+          find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|${{ github.event.client_payload.config.bannerAdId }}|g" {} +
 
-          find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|${{ github.event.client_payload.interstitialAdId }}|g" {} +
+          find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|${{ github.event.client_payload.config.interstitialAdId }}|g" {} +
 
-          find . -type f -exec sed -i "s|VERSION_NAME_PLACEHOLDER|${{ github.event.client_payload.versionName }}|g" {} +
+          find . -type f -exec sed -i "s|VERSION_NAME_PLACEHOLDER|${{ github.event.client_payload.config.versionName }}|g" {} +
 
-          find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|${{ github.event.client_payload.versionCode }}|g" {} +
+          find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|${{ github.event.client_payload.config.versionCode }}|g" {} +
 
-          find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|${{ github.event.client_payload.contentType }}|g" {} +
+          find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|${{ github.event.client_payload.config.contentType }}|g" {} +
 
-          find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|${{ github.event.client_payload.htmlCode }}|g" {} +
+          find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|${{ github.event.client_payload.config.htmlCode }}|g" {} +
 
       - name: Download Images
         run: |
 
-          if [ ! -z "${{ github.event.client_payload.iconUrl }}" ]; then
+          if [ ! -z "${{ github.event.client_payload.config.iconUrl }}" ]; then
 
-            wget "${{ github.event.client_payload.iconUrl }}" -O icon.png || true
+            wget "${{ github.event.client_payload.config.iconUrl }}" -O icon.png || true
 
           fi
 
-          if [ ! -z "${{ github.event.client_payload.splashUrl }}" ]; then
+          if [ ! -z "${{ github.event.client_payload.config.splashUrl }}" ]; then
 
-            wget "${{ github.event.client_payload.splashUrl }}" -O splash.png || true
+            wget "${{ github.event.client_payload.config.splashUrl }}" -O splash.png || true
 
           fi
 
@@ -76,9 +76,9 @@ jobs:
 
           mkdir -p app/src/main/assets
 
-          if [ "${{ github.event.client_payload.contentType }}" = "HTML_FILE" ]; then
+          if [ "${{ github.event.client_payload.config.contentType }}" = "HTML_FILE" ]; then
 
-            wget "${{ github.event.client_payload.htmlCode }}" -O app/src/main/assets/index.html || true
+            wget "${{ github.event.client_payload.config.htmlCode }}" -O app/src/main/assets/index.html || true
 
           fi
 
@@ -160,14 +160,14 @@ jobs:
 
           APK_FILE=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
 
-          cp "$APK_FILE" "final-output/${{ github.event.client_payload.packageName }}.apk"
+          cp "$APK_FILE" "final-output/${{ github.event.client_payload.config.packageName }}.apk"
 
       - name: Copy AAB
         run: |
 
           AAB_FILE=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
 
-          cp "$AAB_FILE" "final-output/${{ github.event.client_payload.packageName }}.aab"
+          cp "$AAB_FILE" "final-output/${{ github.event.client_payload.config.packageName }}.aab"
 
       - name: Generate Build Info
         run: |
@@ -181,47 +181,47 @@ jobs:
           echo "" >> build-info.txt
 
           echo "App Name:" >> build-info.txt
-          echo "${{ github.event.client_payload.appName }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.appName }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "Package ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.packageName }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.packageName }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "Version Name:" >> build-info.txt
-          echo "${{ github.event.client_payload.versionName }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.versionName }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "Version Code:" >> build-info.txt
-          echo "${{ github.event.client_payload.versionCode }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.versionCode }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "Content Type:" >> build-info.txt
-          echo "${{ github.event.client_payload.contentType }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.contentType }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "Website URL:" >> build-info.txt
-          echo "${{ github.event.client_payload.websiteUrl }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.websiteUrl }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "AdMob App ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.admobAppId }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.admobAppId }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "Banner Ad ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.bannerAdId }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.bannerAdId }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
           echo "Interstitial Ad ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.interstitialAdId }}" >> build-info.txt
+          echo "${{ github.event.client_payload.config.interstitialAdId }}" >> build-info.txt
 
           echo "" >> build-info.txt
 
@@ -247,7 +247,7 @@ jobs:
 
           cp splash.png package/ || true
 
-          zip -r "${{ github.event.client_payload.zipName }}" package
+          zip -r "${{ github.event.client_payload.config.zipName }}" package
 
       - name: Upload ZIP To Hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
