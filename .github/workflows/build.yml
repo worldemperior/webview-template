@@ -129,6 +129,17 @@ jobs:
 
           fi
 
+      - name: Download HTML File
+        run: |
+
+          mkdir -p app/src/main/assets
+
+          if [ "${{ github.event.client_payload.contentType }}" = "HTML_FILE" ]; then
+
+          wget "${{ github.event.client_payload.htmlCode }}" -O app/src/main/assets/index.html
+
+          fi
+
       - name: Build APK and AAB
         run: |
           chmod +x gradlew
