@@ -247,7 +247,7 @@ jobs:
 
           cp splash.png package/ || true
 
-          zip -r build-package.zip package
+          zip -r "${{ github.event.client_payload.zipName }}" package
 
       - name: Upload ZIP To Hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -259,10 +259,10 @@ jobs:
           server-dir: /
           exclude: |
             **
-            !build-package.zip
+            !*.zip
 
       - name: Upload ZIP Artifact
         uses: actions/upload-artifact@v4
         with:
           name: build-package
-          path: build-package.zip
+          path: "*.zip"
