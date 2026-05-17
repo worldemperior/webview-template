@@ -34,7 +34,7 @@ android {
 
     defaultConfig {
 
-        applicationId = if (project.hasProperty("appId")) project.property("appId").toString() else "com.template.webview"
+        applicationId = "PACKAGE_PLACEHOLDER"
 
         minSdk = 24
         targetSdk = 36
