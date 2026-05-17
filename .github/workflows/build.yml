@@ -19,65 +19,93 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Dynamically Inject Application Configuration Properties
+      - name: Verify and Log Payload Data Chain
+        run: |
+          echo "=========================================================="
+          echo "Processing Incoming Payload Parameters:"
+          echo "Target Package Name : ${{ github.event.client_payload.config.packageName }}"
+          echo "Target Application Name : ${{ github.event.client_payload.config.appName }}"
+          echo "Target Base Endpoint URL: ${{ github.event.client_payload.config.appUrl }}"
+          echo "Target AdMob App ID     : ${{ github.event.client_payload.config.admobAppId }}"
+          echo "Target Destination Folder: ${{ github.event.client_payload.config.emailFolder }}"
+          echo "Target Export File Name : ${{ github.event.client_payload.config.zipName }}"
+          echo "=========================================================="
+
+      - name: Dynamically Inject Resource and Code Configurations
         run: |
           PROP_NAME="${{ github.event.client_payload.config.appName }}"
           PROP_URL="${{ github.event.client_payload.config.appUrl }}"
           PROP_ADMOB="${{ github.event.client_payload.config.admobAppId }}"
           
-          echo "=========================================================="
-          echo "Processing Injection Parameters:"
-          echo "App Name: $PROP_NAME"
-          echo "Target URL: $PROP_URL"
-          echo "AdMob App ID: $PROP_ADMOB"
-          echo "=========================================================="
-          
-          # 1. Safely inject App Name into strings.xml resource layer
+          # 1. Inject App Name safely into strings.xml
           if [ -f app/src/main/res/values/strings.xml ]; then
             sed -i "s/APP_NAME_PLACEHOLDER/$PROP_NAME/g" app/src/main/res/values/strings.xml
             echo "✓ Successfully injected App Name into strings.xml"
-          else
-            echo "⚠ Warning: app/src/main/res/values/strings.xml not found!"
           fi
           
-          # 2. Inject AdMob ID into Manifest placeholders
+          # 2. Process AdMob ID Manifest Layer Safely
           if [ -f app/src/main/AndroidManifest.xml ]; then
-            if [ ! -z "$PROP_ADMOB" ]; then
+            if [ ! -z "$PROP_ADMOB" ] && [ "$PROP_ADMOB" != "null" ]; then
               sed -i "s/ADMOB_APP_ID_PLACEHOLDER/$PROP_ADMOB/g" app/src/main/AndroidManifest.xml
               echo "✓ Successfully injected AdMob App ID into AndroidManifest.xml"
             else
-              # Fallback to test ID if empty to prevent build compilation crashes
+              # Prevent crashes if payload returns empty: inject official safe test id
               sed -i "s/ADMOB_APP_ID_PLACEHOLDER/ca-app-pub-3940256099942544~3347511713/g" app/src/main/AndroidManifest.xml
-              echo "⚠ AdMob ID payload missing. Injected Google Test App ID fallback."
+              echo "⚠ AdMob ID missing or invalid. Injected official fallback test profile."
             fi
           fi
           
-          # 3. Sweep Java and Kotlin files to insert Webview Core URL endpoints
+          # 3. Sweep Source Code Layer to insert WebView Core URLs
           if [ -d app/src/main ]; then
             find app/src/main -type f \( -name "*.kt" -o -name "*.java" \) -exec sed -i "s|URL_PLACEHOLDER|$PROP_URL|g" {} +
-            echo "✓ Completed URL source code layer replacement sweep"
+            echo "✓ Completed source layer URL replacement sweep"
           fi
+
+      - name: Generate Dynamic Build Metrics Artifact
+        run: |
+          echo "App Name: ${{ github.event.client_payload.config.appName }}" > build-info.txt
+          echo "Package Name: ${{ github.event.client_payload.config.packageName }}" >> build-info.txt
+          echo "Base Endpoint URL: ${{ github.event.client_payload.config.appUrl }}" >> build-info.txt
+          echo "AdMob App ID: ${{ github.event.client_payload.config.admobAppId }}" >> build-info.txt
+          echo "Build Timestamp: $(date)" >> build-info.txt
 
       - name: Grant Executable Permissions to Gradle Wrapper
         run: chmod +x gradlew
 
-      - name: Run Production Compilation via Native Project Property Injection
+      - name: Compile Standalone Production Binaries via Gradle Project Properties
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          PKG_NAME="${{ github.event.client_payload.config.packageName }}"
+          TARGET_PKG="${{ github.event.client_payload.config.packageName }}"
           
-          echo "Executing build for Application ID package target: $PKG_NAME"
-          
-          # We pass the package name directly to your dynamic build.gradle.kts setup using -PappId
-          ./gradlew clean assembleRelease bundleRelease -PappId="$PKG_NAME" --stacktrace
+          # Override values through native project properties parameters (-PappId)
+          ./gradlew clean assembleRelease bundleRelease -PappId="$TARGET_PKG" --stacktrace
 
-      - name: Upload Generated Binaries to Artifact Storage
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-production-builds
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
+      - name: Assemble Isolated Deployment Package Directory
+        run: |
+          mkdir -p package
+          cp app/build/outputs/apk/release/*.apk package/ || true
+          cp app/build/outputs/bundle/release/*.aab package/ || true
+          
+          if [ -f build-info.txt ]; then cp build-info.txt package/; fi
+          if [ -f release.jks ]; then cp release.jks package/; fi
+          
+          zip -r "${{ github.event.client_payload.config.zipName }}" package
+          
+          # Structure deployment mapping path cleanly matching target platform directory criteria
+          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
+          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/
+
+      - name: Deploy Final ZIP Archive safely to Production FileServer
+        run: |
+          sudo apt-get update && sudo apt-get install -y lftp
+          
+          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
+          set ssl:verify-certificate no
+          mkdir -p /builds/${{ github.event.client_payload.config.emailFolder }}
+          mkdir -p /builds/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
+          put upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }} -o /builds/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }}
+          bye
+          EOF
