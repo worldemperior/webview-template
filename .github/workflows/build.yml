@@ -114,10 +114,3 @@ jobs:
           bye
 
           EOF
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: upload/
-          server-dir: /
-          dangerous-clean-slate: false
