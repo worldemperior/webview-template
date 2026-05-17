@@ -17,116 +17,14 @@ jobs:
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Install ImageMagick
-        run: |
-
-          sudo apt-get update
-
-          sudo apt-get install -y imagemagick
-
-      - name: Replace Placeholders
-        run: |
-
-          find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.client_payload.config.appName }}|g" {} +
-
-          find . -type f -exec sed -i "s|URL_PLACEHOLDER|${{ github.event.client_payload.config.websiteUrl }}|g" {} +
-
-          find . -type f -exec sed -i "s|PACKAGE_PLACEHOLDER|${{ github.event.client_payload.config.packageName }}|g" {} +
-
-          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|${{ github.event.client_payload.config.admobAppId }}|g" {} +
-
-          find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|${{ github.event.client_payload.config.bannerAdId }}|g" {} +
-
-          find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|${{ github.event.client_payload.config.interstitialAdId }}|g" {} +
-
-          find . -type f -exec sed -i "s|VERSION_NAME_PLACEHOLDER|${{ github.event.client_payload.config.versionName }}|g" {} +
-
-          find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|${{ github.event.client_payload.config.versionCode }}|g" {} +
-
-          find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|${{ github.event.client_payload.config.contentType }}|g" {} +
-
-          find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|${{ github.event.client_payload.config.htmlCode }}|g" {} +
-
-      - name: Download Images
-        run: |
-
-          if [ ! -z "${{ github.event.client_payload.config.iconUrl }}" ]; then
-
-            wget "${{ github.event.client_payload.config.iconUrl }}" -O icon.png || true
-
-          fi
-
-          if [ ! -z "${{ github.event.client_payload.config.splashUrl }}" ]; then
-
-            wget "${{ github.event.client_payload.config.splashUrl }}" -O splash.png || true
-
-          fi
-
-      - name: Download HTML File
-        run: |
-
-          mkdir -p app/src/main/assets
-
-          if [ "${{ github.event.client_payload.config.contentType }}" = "HTML_FILE" ]; then
-
-            wget "${{ github.event.client_payload.config.htmlCode }}" -O app/src/main/assets/index.html || true
-
-          fi
-
-      - name: Generate Launcher Icons
-        run: |
-
-          if [ -f icon.png ]; then
-
-            convert icon.png -resize 48x48 PNG32:app/src/main/res/mipmap-mdpi/ic_launcher.png
-
-            convert icon.png -resize 72x72 PNG32:app/src/main/res/mipmap-hdpi/ic_launcher.png
-
-            convert icon.png -resize 96x96 PNG32:app/src/main/res/mipmap-xhdpi/ic_launcher.png
-
-            convert icon.png -resize 144x144 PNG32:app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-
-            convert icon.png -resize 192x192 PNG32:app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-            cp app/src/main/res/mipmap-mdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-
-            cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-
-            cp app/src/main/res/mipmap-xhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-
-            cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-
-            cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
-
-          else
-
-            echo "Using default launcher icons"
-
-          fi
-
-      - name: Replace Splash Image
-        run: |
-
-          mkdir -p app/src/main/res/drawable
-
-          if [ -f splash.png ]; then
-
-            convert splash.png \
-              -resize 1080x1920^ \
-              -gravity center \
-              -extent 1080x1920 \
-              PNG32:app/src/main/res/drawable/splash_image.png
-
-          fi
+      - run: sudo apt-get update && sudo apt-get install -y imagemagick
 
       - name: Download User Keystore
         run: |
@@ -156,125 +54,22 @@ jobs:
 
           ./gradlew assembleRelease bundleRelease
 
-      - name: Create Output Folder
-        run: |
-
-          mkdir final-output
-
-      - name: Copy APK
-        run: |
-
-          APK_FILE=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
-
-          cp "$APK_FILE" "final-output/${{ github.event.client_payload.config.packageName }}.apk"
-
-      - name: Copy AAB
-        run: |
-
-          AAB_FILE=$(find app/build/outputs/bundle/release -name "*.aab" | head -n 1)
-
-          cp "$AAB_FILE" "final-output/${{ github.event.client_payload.config.packageName }}.aab"
-
-      - name: Generate Build Info
-        run: |
-
-          echo "=============================" > build-info.txt
-
-          echo "APP BUILDER EXPORT" >> build-info.txt
-
-          echo "=============================" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "App Name:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.appName }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Package ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.packageName }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Version Name:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.versionName }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Version Code:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.versionCode }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Content Type:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.contentType }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Website URL:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.websiteUrl }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "AdMob App ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.admobAppId }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Banner Ad ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.bannerAdId }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Interstitial Ad ID:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.interstitialAdId }}" >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Build Time:" >> build-info.txt
-          date >> build-info.txt
-
-          echo "" >> build-info.txt
-
-          echo "Generated by App Builder"
-          
-          echo "" >> build-info.txt
-          
-          echo "Keystore Password:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.keystorePassword }}" >> build-info.txt
-  
-          echo "" >> build-info.txt
-  
-          echo "Key Alias:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.keyAlias }}" >> build-info.txt
-  
-          echo "" >> build-info.txt
-  
-          echo "Key Password:" >> build-info.txt
-          echo "${{ github.event.client_payload.config.keyPassword }}" >> build-info.txt
-
       - name: Create ZIP Package
         run: |
 
           mkdir -p package
 
-          cp final-output/*.apk package/ || true
+          cp app/build/outputs/apk/release/*.apk package/ || true
 
-          cp final-output/*.aab package/ || true
-
-          cp build-info.txt package/ || true
-
-          cp icon.png package/ || true
-
-          cp splash.png package/ || true
+          cp app/build/outputs/bundle/release/*.aab package/ || true
 
           cp release.jks package/ || true
 
           zip -r "${{ github.event.client_payload.config.zipName }}" package
 
-          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
+          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.buildUid }}
 
-          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/
+          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.buildUid }}/
 
       - name: Upload ZIP To Hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -285,4 +80,3 @@ jobs:
           local-dir: upload/
           server-dir: /
           dangerous-clean-slate: false
-
