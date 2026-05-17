@@ -128,10 +128,26 @@ jobs:
 
           fi
 
-      - name: Decode Keystore
+      - name: Download User Keystore
         run: |
 
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.jks
+          if [ "${{ github.event.client_payload.config.generateKeystore }}" = "false" ]; then
+
+            wget "${{ github.event.client_payload.config.keystoreUrl }}" -O release.jks
+
+          else
+
+            keytool -genkey -v \
+              -keystore release.jks \
+              -storepass "${{ github.event.client_payload.config.keystorePassword }}" \
+              -alias "${{ github.event.client_payload.config.keyAlias }}" \
+              -keypass "${{ github.event.client_payload.config.keyPassword }}" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=AppBuilder"
+
+          fi
 
       - name: Build APK and AAB
         run: |
