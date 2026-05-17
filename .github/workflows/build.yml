@@ -78,9 +78,9 @@ jobs:
 
           zip -r "${{ github.event.client_payload.config.zipName }}" package
 
-          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.buildUid }}
+          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
 
-          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.buildUid }}/
+          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/
 
       - name: Upload ZIP To Hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
