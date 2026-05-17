@@ -284,4 +284,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: upload/
           server-dir: /
+          dangerous-clean-slate: false
 
