@@ -52,6 +52,12 @@ jobs:
 
           sed -i 's/applicationId = "PACKAGE_PLACEHOLDER"/applicationId = "${{ github.event.client_payload.config.packageName }}"/' app/build.gradle.kts
 
+      - name: Debug Payload
+        run: |
+
+          echo "PACKAGE:"
+          echo "${{ github.event.client_payload.config.packageName }}"
+
       - name: Build APK and AAB
         run: |
 
