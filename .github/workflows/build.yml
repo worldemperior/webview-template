@@ -11,9 +11,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      KEYSTORE_PASSWORD: ${{ github.event.client_payload.config.keystorePassword }}
+      KEY_ALIAS: ${{ github.event.client_payload.config.keyAlias }}
+      KEY_PASSWORD: ${{ github.event.client_payload.config.keyPassword }}
 
     steps:
 
