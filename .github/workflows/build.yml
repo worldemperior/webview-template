@@ -54,10 +54,12 @@ jobs:
           echo "PACKAGE_NAME=$PACKAGE_NAME"
           echo "ZIP_NAME=$ZIP_NAME"
 
-      - name: Replace Application ID
+      - name: Replace Package Configuration
         run: |
 
           sed -i "s|applicationId = \"com.template.webview\"|applicationId = \"$PACKAGE_NAME\"|" app/build.gradle.kts
+
+          sed -i "s|namespace = \"com.template.webview\"|namespace = \"$PACKAGE_NAME\"|" app/build.gradle.kts
 
       - name: Replace Placeholders
         run: |
