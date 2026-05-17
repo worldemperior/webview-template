@@ -47,6 +47,11 @@ jobs:
 
           fi
 
+      - name: Replace Application ID
+        run: |
+
+          sed -i 's/applicationId = "PACKAGE_PLACEHOLDER"/applicationId = "${{ github.event.client_payload.config.packageName }}"/' app/build.gradle.kts
+
       - name: Build APK and AAB
         run: |
 

@@ -1,4 +1,4 @@
-package PACKAGE_PLACEHOLDER
+package com.template.webview
 
 import android.annotation.SuppressLint
 import android.os.Bundle

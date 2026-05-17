@@ -4,7 +4,7 @@ plugins {
 
 android {
 
-    namespace = "PACKAGE_PLACEHOLDER"
+    namespace = "com.template.webview"
 
     compileSdk = 36
 
