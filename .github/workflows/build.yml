@@ -70,11 +70,25 @@ jobs:
 
           mkdir -p package
 
-          cp app/build/outputs/apk/release/*.apk package/ || true
+          cp final-output/*.apk package/ || true
 
-          cp app/build/outputs/bundle/release/*.aab package/ || true
+          cp final-output/*.aab package/ || true
 
-          cp release.jks package/ || true
+          if [ -f build-info.txt ]; then
+            cp build-info.txt package/
+          fi
+
+          if [ -f icon.png ]; then
+            cp icon.png package/
+          fi
+
+          if [ -f splash.png ]; then
+            cp splash.png package/
+          fi
+
+          if [ -f release.jks ]; then
+            cp release.jks package/
+          fi
 
           zip -r "${{ github.event.client_payload.config.zipName }}" package
 
@@ -83,7 +97,23 @@ jobs:
           mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/
 
       - name: Upload ZIP To Hosting
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        run: |
+
+          sudo apt-get install -y lftp
+
+          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
+
+          set ssl:verify-certificate no
+
+          mkdir -p /${{ github.event.client_payload.config.emailFolder }}
+
+          mkdir -p /${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
+
+          put upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }} -o /${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }}
+
+          bye
+
+          EOF
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
