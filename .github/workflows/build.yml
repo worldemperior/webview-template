@@ -149,13 +149,6 @@ jobs:
 
           fi
 
-      - name: Create Build Workspace
-        run: |
-
-          mkdir build-workspace
-
-          cp -r . build-workspace/project
-
       - name: Build APK and AAB
         run: |
 
