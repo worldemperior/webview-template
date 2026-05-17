@@ -1,116 +1,88 @@
-name: Build App
+name: Automated Android Multi-Tenant App Builder
 
 on:
   repository_dispatch:
-    types: [build-apk]
+    types: [trigger-build]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
-    env:
-      KEYSTORE_PASSWORD: ${{ github.event.client_payload.config.keystorePassword }}
-      KEY_ALIAS: ${{ github.event.client_payload.config.keyAlias }}
-      KEY_PASSWORD: ${{ github.event.client_payload.config.keyPassword }}
-
     steps:
+      - name: Checkout Repository Blueprint
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
+      - name: Set up Java Development Kit Environment
+        uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 17
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
 
-      - run: sudo apt-get update && sudo apt-get install -y imagemagick
+      - name: Setup Android SDK Target Tools
+        uses: android-actions/setup-android@v3
 
-      - name: Download User Keystore
+      - name: Dynamically Inject Application Configuration Properties
         run: |
+          PKG_NAME="${{ github.event.client_payload.config.packageName }}"
+          APP_NAME="${{ github.event.client_payload.config.appName }}"
+          APP_URL="${{ github.event.client_payload.config.appUrl }}"
+          
+          echo "Injecting Configurations: Package: $PKG_NAME | Name: $APP_NAME"
+          
+          # Replace template placeholders globally in structural project configuration files safely
+          find . -type f \( -name "AndroidManifest.xml" -o -name "build.gradle" -o -name "build.gradle.kts" -o -name "strings.xml" \) -exec sed -i "s/PACKAGE_PLACEHOLDER/$PKG_NAME/g" {} +
+          find . -type f \( -name "AndroidManifest.xml" -o -name "build.gradle" -o -name "build.gradle.kts" -o -name "strings.xml" \) -exec sed -i "s/APP_NAME_PLACEHOLDER/$APP_NAME/g" {} +
+          
+          # Replace the endpoint target string within source code configuration layers
+          find . -type f \( -name "*.kt" -o -name "*.java" \) -exec sed -i "s|URL_PLACEHOLDER|$APP_URL|g" {} +
 
-          if [ "${{ github.event.client_payload.config.generateKeystore }}" = "false" ]; then
+      - name: Grant Executable Permissions to Gradle Wrapper
+        run: chmod +x gradlew
 
-            wget "${{ github.event.client_payload.config.keystoreUrl }}" -O release.jks
+      - name: Execute Production Production Compilation Build (APK & AAB)
+        run: ./gradlew assembleRelease bundleRelease --stacktrace
 
-          else
-
-            keytool -genkey -v \
-              -keystore release.jks \
-              -storepass "${{ github.event.client_payload.config.keystorePassword }}" \
-              -alias "${{ github.event.client_payload.config.keyAlias }}" \
-              -keypass "${{ github.event.client_payload.config.keyPassword }}" \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=AppBuilder"
-
+      - name: Validate and Package App Outputs
+        run: |
+          mkdir -p final_workspace_package
+          
+          # Safely extract generated files from build distributions
+          cp app/build/outputs/apk/release/*.apk final_workspace_package/ || echo "No APK binaries found in paths."
+          cp app/build/outputs/bundle/release/*.aab final_workspace_package/ || echo "No AAB bundles found in paths."
+          
+          # CRITICAL VALIDATION STEP: Verify compilation outputs exist before packaging
+          if [ ! -f final_workspace_package/*.apk ] && [ ! -f final_workspace_package/*.aab ]; then
+            echo "ERROR: Compilation step completed but produced no target binaries. Aborting to avoid empty zip packaging."
+            exit 1
           fi
+          
+          # Bundle configuration records and security tokens
+          if [ -f release.jks ]; then cp release.jks final_workspace_package/; fi
+          
+          echo "Build Timestamp: $(date)" > final_workspace_package/build-info.txt
+          echo "Package Target Identity: ${{ github.event.client_payload.config.packageName }}" >> final_workspace_package/build-info.txt
+          echo "Application Target Name: ${{ github.event.client_payload.config.appName }}" >> final_workspace_package/build-info.txt
+          
+          # Compress Workspace to explicit targeting filename passed from server payload
+          ZIP_OUTPUT_NAME="${{ github.event.client_payload.config.zipName }}"
+          zip -r "$ZIP_OUTPUT_NAME" final_workspace_package
+          
+          mkdir -p ready_to_ship
+          mv "$ZIP_OUTPUT_NAME" ready_to_ship/
 
-      - name: Replace Application ID
+      - name: Upload Single Distribution Package via Isolated LFTP Stream
         run: |
-
-          sed -i 's/applicationId = "PACKAGE_PLACEHOLDER"/applicationId = "${{ github.event.client_payload.config.packageName }}"/' app/build.gradle.kts
-
-      - name: Debug Payload
-        run: |
-
-          echo "PACKAGE:"
-          echo "${{ github.event.client_payload.config.packageName }}"
-
-      - name: Build APK and AAB
-        run: |
-
-          chmod +x gradlew
-
-          ./gradlew assembleRelease bundleRelease
-
-      - name: Create ZIP Package
-        run: |
-
-          mkdir -p package
-
-          cp final-output/*.apk package/ || true
-
-          cp final-output/*.aab package/ || true
-
-          if [ -f build-info.txt ]; then
-            cp build-info.txt package/
-          fi
-
-          if [ -f icon.png ]; then
-            cp icon.png package/
-          fi
-
-          if [ -f splash.png ]; then
-            cp splash.png package/
-          fi
-
-          if [ -f release.jks ]; then
-            cp release.jks package/
-          fi
-
-          zip -r "${{ github.event.client_payload.config.zipName }}" package
-
-          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
-
-          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/
-
-      - name: Upload ZIP To Hosting
-        run: |
-
-          sudo apt-get install -y lftp
-
+          sudo apt-get update && sudo apt-get install -y lftp
+          
+          ZIP_TARGET_FILE="${{ github.event.client_payload.config.zipName }}"
+          USER_SUBDIR="${{ github.event.client_payload.config.emailFolder }}"
+          APP_SUBDIR="${{ github.event.client_payload.config.packageName }}"
+          
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
-
           set ssl:verify-certificate no
-
-          mkdir -p /${{ github.event.client_payload.config.emailFolder }}
-
-          mkdir -p /${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
-
-          put upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }} -o /${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }}
-
+          mkdir -p /public_html/builds/$USER_SUBDIR/$APP_SUBDIR
+          cd /public_html/builds/$USER_SUBDIR/$APP_SUBDIR
+          put ready_to_ship/$ZIP_TARGET_FILE -o $ZIP_TARGET_FILE
           bye
-
           EOF

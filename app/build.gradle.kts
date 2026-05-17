@@ -34,8 +34,7 @@ android {
 
     defaultConfig {
 
-        applicationId =
-            "com.template.webview"
+        applicationId = if (project.hasProperty("appId")) project.property("appId").toString() else "com.template.webview"
 
         minSdk = 24
         targetSdk = 36
