@@ -3,74 +3,37 @@ plugins {
 }
 
 android {
-
     namespace = "com.template.webview"
-
     compileSdk = 36
 
     signingConfigs {
-
         create("release") {
-
-            storeFile =
-                file("../release.jks")
-
-            storePassword =
-                System.getenv(
-                    "KEYSTORE_PASSWORD"
-                )
-
-            keyAlias =
-                System.getenv(
-                    "KEY_ALIAS"
-                )
-
-            keyPassword =
-                System.getenv(
-                    "KEY_PASSWORD"
-                )
+            storeFile = file("../release.jks")
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
         }
     }
 
     defaultConfig {
-
-        applicationId = if (project.hasProperty("appId")) {
-            project.property("appId").toString()
-        } else {
-            "com.template.webview"
-        }
-
+        applicationId = if (project.hasProperty("appId")) project.property("appId").toString() else "com.template.webview"
         minSdk = 24
         targetSdk = 36
 
-        versionCode =
-            (System.currentTimeMillis() / 1000)
-                .toInt()
-
-        versionName =
-            System.currentTimeMillis()
-                .toString()
+        versionCode = (System.currentTimeMillis() / 1000).toInt()
+        versionName = System.currentTimeMillis().toString()
     }
 
     buildTypes {
-
         release {
-
             isMinifyEnabled = false
-
-            signingConfig =
-                signingConfigs
-                    .getByName("release")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
     compileOptions {
-
-        sourceCompatibility =
-            JavaVersion.VERSION_17
-
-        targetCompatibility =
-            JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 }
 
