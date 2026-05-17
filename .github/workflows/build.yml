@@ -11,52 +11,155 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      APP_NAME: ${{ github.event.client_payload.config.appName }}
+      EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
+      WEBSITE_URL: ${{ github.event.client_payload.config.websiteUrl }}
+      PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
+      VERSION_NAME: ${{ github.event.client_payload.config.versionName }}
+      VERSION_CODE: ${{ github.event.client_payload.config.versionCode }}
+      BANNER_AD_ID: ${{ github.event.client_payload.config.bannerAdId }}
+      INTERSTITIAL_AD_ID: ${{ github.event.client_payload.config.interstitialAdId }}
+      ADMOB_APP_ID: ${{ github.event.client_payload.config.admobAppId }}
+      ICON_URL: ${{ github.event.client_payload.config.iconUrl }}
+      SPLASH_URL: ${{ github.event.client_payload.config.splashUrl }}
+      CONTENT_TYPE: ${{ github.event.client_payload.config.contentType }}
+      HTML_CODE: ${{ github.event.client_payload.config.htmlCode }}
+      GENERATE_KEYSTORE: ${{ github.event.client_payload.config.generateKeystore }}
+      KEYSTORE_URL: ${{ github.event.client_payload.config.keystoreUrl }}
       KEYSTORE_PASSWORD: ${{ github.event.client_payload.config.keystorePassword }}
       KEY_ALIAS: ${{ github.event.client_payload.config.keyAlias }}
       KEY_PASSWORD: ${{ github.event.client_payload.config.keyPassword }}
+      ZIP_NAME: ${{ github.event.client_payload.config.zipName }}
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - run: sudo apt-get update && sudo apt-get install -y imagemagick
-
-      - name: Download User Keystore
+      - name: Install ImageMagick
         run: |
 
-          if [ "${{ github.event.client_payload.config.generateKeystore }}" = "false" ]; then
+          sudo apt-get update
+          sudo apt-get install -y imagemagick lftp
 
-            wget "${{ github.event.client_payload.config.keystoreUrl }}" -O release.jks
+      - name: Debug Variables
+        run: |
+
+          echo "PACKAGE_NAME=$PACKAGE_NAME"
+          echo "ZIP_NAME=$ZIP_NAME"
+
+      - name: Replace Application ID
+        run: |
+
+          sed -i "s|applicationId = \"com.template.webview\"|applicationId = \"$PACKAGE_NAME\"|" app/build.gradle.kts
+
+      - name: Replace Placeholders
+        run: |
+
+          find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
+
+          find . -type f -exec sed -i "s|URL_PLACEHOLDER|$WEBSITE_URL|g" {} +
+
+          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
+
+          find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|$BANNER_AD_ID|g" {} +
+
+          find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|$INTERSTITIAL_AD_ID|g" {} +
+
+          find . -type f -exec sed -i "s|VERSION_NAME_PLACEHOLDER|$VERSION_NAME|g" {} +
+
+          find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|$VERSION_CODE|g" {} +
+
+          find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|$CONTENT_TYPE|g" {} +
+
+          find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|$HTML_CODE|g" {} +
+
+      - name: Download Images
+        run: |
+
+          if [ ! -z "$ICON_URL" ]; then
+            wget "$ICON_URL" -O icon.png || true
+          fi
+
+          if [ ! -z "$SPLASH_URL" ]; then
+            wget "$SPLASH_URL" -O splash.png || true
+          fi
+
+      - name: Download HTML File
+        run: |
+
+          mkdir -p app/src/main/assets
+
+          if [ "$CONTENT_TYPE" = "HTML_FILE" ]; then
+            wget "$HTML_CODE" -O app/src/main/assets/index.html || true
+          fi
+
+      - name: Generate Launcher Icons
+        run: |
+
+          if [ -f icon.png ]; then
+
+            convert icon.png -resize 48x48 app/src/main/res/mipmap-mdpi/ic_launcher.png
+
+            convert icon.png -resize 72x72 app/src/main/res/mipmap-hdpi/ic_launcher.png
+
+            convert icon.png -resize 96x96 app/src/main/res/mipmap-xhdpi/ic_launcher.png
+
+            convert icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+
+            convert icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
+            cp app/src/main/res/mipmap-mdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+
+            cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+
+            cp app/src/main/res/mipmap-xhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+
+            cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+
+            cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          fi
+
+      - name: Replace Splash Image
+        run: |
+
+          mkdir -p app/src/main/res/drawable
+
+          if [ -f splash.png ]; then
+
+            convert splash.png \
+              -resize 1080x1920^ \
+              -gravity center \
+              -extent 1080x1920 \
+              PNG32:app/src/main/res/drawable/splash_image.png
+          fi
+
+      - name: Prepare Keystore
+        run: |
+
+          if [ "$GENERATE_KEYSTORE" = "false" ]; then
+
+            wget "$KEYSTORE_URL" -O release.jks
 
           else
 
             keytool -genkey -v \
               -keystore release.jks \
-              -storepass "${{ github.event.client_payload.config.keystorePassword }}" \
-              -alias "${{ github.event.client_payload.config.keyAlias }}" \
-              -keypass "${{ github.event.client_payload.config.keyPassword }}" \
+              -storepass "$KEYSTORE_PASSWORD" \
+              -alias "$KEY_ALIAS" \
+              -keypass "$KEY_PASSWORD" \
               -keyalg RSA \
               -keysize 2048 \
               -validity 10000 \
               -dname "CN=AppBuilder"
 
           fi
-
-      - name: Replace Application ID
-        run: |
-
-          sed -i 's/applicationId = "PACKAGE_PLACEHOLDER"/applicationId = "${{ github.event.client_payload.config.packageName }}"/' app/build.gradle.kts
-
-      - name: Debug Payload
-        run: |
-
-          echo "PACKAGE:"
-          echo "${{ github.event.client_payload.config.packageName }}"
 
       - name: Build APK and AAB
         run: |
@@ -65,18 +168,16 @@ jobs:
 
           ./gradlew assembleRelease bundleRelease
 
-      - name: Create ZIP Package
+      - name: Prepare Package
         run: |
 
           mkdir -p package
 
-          cp final-output/*.apk package/ || true
+          find app/build/outputs/apk/release -name "*.apk" -exec cp {} package/app-release.apk \;
 
-          cp final-output/*.aab package/ || true
+          find app/build/outputs/bundle/release -name "*.aab" -exec cp {} package/app-release.aab \;
 
-          if [ -f build-info.txt ]; then
-            cp build-info.txt package/
-          fi
+          cp release.jks package/ || true
 
           if [ -f icon.png ]; then
             cp icon.png package/
@@ -86,30 +187,47 @@ jobs:
             cp splash.png package/
           fi
 
-          if [ -f release.jks ]; then
-            cp release.jks package/
-          fi
+          echo "App Name: $APP_NAME" > package/build-info.txt
 
-          zip -r "${{ github.event.client_payload.config.zipName }}" package
+          echo "" >> package/build-info.txt
+          echo "Package ID: $PACKAGE_NAME" >> package/build-info.txt
 
-          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
+          echo "" >> package/build-info.txt
+          echo "Version Name: $VERSION_NAME" >> package/build-info.txt
 
-          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/
+          echo "" >> package/build-info.txt
+          echo "Version Code: $VERSION_CODE" >> package/build-info.txt
 
-      - name: Upload ZIP To Hosting
+          echo "" >> package/build-info.txt
+          echo "Keystore Password: $KEYSTORE_PASSWORD" >> package/build-info.txt
+
+          echo "" >> package/build-info.txt
+          echo "Key Alias: $KEY_ALIAS" >> package/build-info.txt
+
+          echo "" >> package/build-info.txt
+          echo "Key Password: $KEY_PASSWORD" >> package/build-info.txt
+
+      - name: Create ZIP
         run: |
 
-          sudo apt-get install -y lftp
+          zip -r "$ZIP_NAME" package
+
+      - name: Upload ZIP
+        run: |
+
+          mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
+
+          mv "$ZIP_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
 
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
 
           set ssl:verify-certificate no
 
-          mkdir -p /${{ github.event.client_payload.config.emailFolder }}
+          mkdir -p /$EMAIL_FOLDER
 
-          mkdir -p /${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
+          mkdir -p /$EMAIL_FOLDER/$PACKAGE_NAME
 
-          put upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }} -o /${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/${{ github.event.client_payload.config.zipName }}
+          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_NAME
 
           bye
 
