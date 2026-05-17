@@ -35,7 +35,7 @@ android {
     defaultConfig {
 
         applicationId =
-            "PACKAGE_PLACEHOLDER"
+            "com.template.webview"
 
         minSdk = 24
         targetSdk = 36
