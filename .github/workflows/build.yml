@@ -256,7 +256,7 @@ jobs:
       - name: Create ZIP Package
         run: |
 
-          mkdir package
+          mkdir -p package
 
           cp final-output/*.apk package/ || true
 
@@ -272,9 +272,9 @@ jobs:
 
           zip -r "${{ github.event.client_payload.config.zipName }}" package
 
-          mkdir upload
+          mkdir -p upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}
 
-          mv "${{ github.event.client_payload.config.zipName }}" upload/
+          mv "${{ github.event.client_payload.config.zipName }}" upload/${{ github.event.client_payload.config.emailFolder }}/${{ github.event.client_payload.config.packageName }}/
 
       - name: Upload ZIP To Hosting
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
