@@ -228,26 +228,21 @@ jobs:
 
       - name: Create ZIP
         run: |
-
-          zip -r "$ZIP_NAME" package
+          # Convert package name dots to underscores to calculate the correct zip file name locally
+          GENERATED_ZIP_NAME=$(echo "${{ github.event.client_payload.config.packageName }}" | tr '.' '_')_build.zip
+          echo "ZIP_FILE_NAME=$GENERATED_ZIP_NAME" >> $GITHUB_ENV
+          zip -r "$GENERATED_ZIP_NAME" package
 
       - name: Upload ZIP
         run: |
-
+          # Use the environment variable saved from the previous step
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
-
-          mv "$ZIP_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
-
+          mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
+                
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
-
           set ssl:verify-certificate no
-
           mkdir -p /$EMAIL_FOLDER
-
           mkdir -p /$EMAIL_FOLDER/$PACKAGE_NAME
-
-          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_NAME
-
+          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME
           bye
-
           EOF
