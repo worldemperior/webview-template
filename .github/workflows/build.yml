@@ -54,10 +54,29 @@ jobs:
           echo "PACKAGE_NAME=$PACKAGE_NAME"
           echo "ZIP_NAME=$ZIP_NAME"
 
-      - name: Replace Application ID
+      - name: Replace Application ID and Namespace
         run: |
-
+          # 1. Update the applicationId and namespace in the build configuration
           sed -i "s|applicationId = \"com.template.webview\"|applicationId = \"$PACKAGE_NAME\"|" app/build.gradle.kts
+          sed -i "s|namespace = \"com.template.webview\"|namespace = \"$PACKAGE_NAME\"|" app/build.gradle.kts
+
+      - name: Refactor Kotlin Packages & Directory Structure
+        run: |
+          # 2. Globally replace the package reference inside all files (Kotlin source files, manifests, layouts)
+          find . -type f \( -name "*.kt" -or -name "*.xml" -or -name "*.gradle*" \) -exec sed -i "s|com.template.webview|$PACKAGE_NAME|g" {} +
+                
+          # 3. Physically move files to a folder path matching the new package name
+          # Convert 'com.example.app' into 'com/example/app'
+          NEW_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
+                
+          # Create the new directory path inside your project source directories
+          mkdir -p "app/src/main/java/$NEW_DIR"
+                
+          # If files exist in the old folder structure, move them to the new folder structure
+          if [ -d "app/src/main/java/com/template/webview" ]; then
+            mv app/src/main/java/com/template/webview/* "app/src/main/java/$NEW_DIR/"
+            rm -rf app/src/main/java/com/template
+          fi
 
       - name: Replace Placeholders
         run: |
