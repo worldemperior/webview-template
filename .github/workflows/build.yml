@@ -219,8 +219,16 @@ jobs:
             
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
           set ssl:verify-certificate no
-          set ftp:create-dirs true
-          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o builds/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME
+            
+          # Force navigate to the root builds tree and manually handle structural paths cleanly
+          cd builds || true
+          mkdir -p $EMAIL_FOLDER || true
+          cd $EMAIL_FOLDER || true
+          mkdir -p $PACKAGE_NAME || true
+          cd $PACKAGE_NAME || true
+            
+          # Now that the path structure is guaranteed, drop the file directly into place
+          put ../../../upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o $ZIP_FILE_NAME
           bye
           EOF
 
