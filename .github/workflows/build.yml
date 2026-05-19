@@ -217,16 +217,21 @@ jobs:
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
             
-          # Calculate the local file tracking locations cleanly
           ABS_ZIP_PATH="$(pwd)/upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME"
           echo "Uploading source from: $ABS_ZIP_PATH"
             
-          # We log directly into the deep path context via the URL string itself!
-          # This forces the FTP connection wrapper to automatically mount right inside your project directory context.
-          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}/builds/$EMAIL_FOLDER/$PACKAGE_NAME/" <<EOF
+          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
           set ssl:verify-certificate no
             
-          # Simple, bulletproof upload directly into the active mounted folder scope
+          # 1. Safely drift down into the existing builds directory tree context
+          cd builds
+            
+          # 2. Use a blind execution sequence to switch folder workspaces.
+          # If the folder doesn't exist, cd will fail, so we catch it and create it natively.
+          cd $EMAIL_FOLDER || mkdir $EMAIL_FOLDER; cd $EMAIL_FOLDER
+          cd $PACKAGE_NAME || mkdir $PACKAGE_NAME; cd $PACKAGE_NAME
+            
+          # 3. Drop the binary payload package into place now that pathing is guaranteed
           put "$ABS_ZIP_PATH" -o "$ZIP_FILE_NAME"
           bye
           EOF
