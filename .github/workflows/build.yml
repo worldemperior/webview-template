@@ -219,8 +219,8 @@ jobs:
             
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
           set ssl:verify-certificate no
-          # -D forces lftp to silently handle missing parent paths automatically without crashing if they exist
-          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o builds/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -D
+          set ftp:create-dirs true
+          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o builds/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME
           bye
           EOF
 
