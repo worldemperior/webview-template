@@ -216,7 +216,7 @@ jobs:
         run: |
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
-          
+            
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
           set ssl:verify-certificate no
           mkdir -p /builds/$EMAIL_FOLDER
@@ -231,8 +231,10 @@ jobs:
           EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
           PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
         run: |
-          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" -e "
-            cd builds/$EMAIL_FOLDER/$PACKAGE_NAME/;
-            rm -f build.lock;
-            quit;
-          "
+          # Use a multi-line script execution block to bypass strict SSL verification here too
+          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
+          set ssl:verify-certificate no
+          cd builds/$EMAIL_FOLDER/$PACKAGE_NAME/
+          rm -f build.lock
+          bye
+          EOF
