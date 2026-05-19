@@ -217,11 +217,11 @@ jobs:
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
             
-          # We pass the SSL override directly into the connection flag string via the '--eval' engine.
-          # This guarantees that the certificate bypass applies BEFORE the connection handshake executes.
-          lftp --eval "set ssl:verify-certificate no" \
-            -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" \
-            "${{ secrets.FTP_SERVER }}" -e "
+          # We execute everything using the -c flag, chaining the commands with semicolons.
+          # This forces lftp to process the certificate ignore rule right out of the gate.
+          lftp -c "
+          set ssl:verify-certificate no;
+          open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
           put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
           quit;
           "
@@ -232,11 +232,11 @@ jobs:
           EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
           PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
         run: |
-          # Use the exact matching inline syntax to access the directory structure and wipe the lock file clean
-          lftp --eval "set ssl:verify-certificate no" \
-                -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" \
-                "${{ secrets.FTP_SERVER }}" -e "
-          cd /$EMAIL_FOLDER/$PACKAGE_NAME/ || cd $EMAIL_FOLDER/$PACKAGE_NAME/ || true;
+          # Use the exact same chained execution to cleanly login and clear out the build.lock file
+          lftp -c "
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
+            cd /$EMAIL_FOLDER/$PACKAGE_NAME/ || cd $EMAIL_FOLDER/$PACKAGE_NAME/ || true;
             rm -f build.lock;
             quit;
           "
