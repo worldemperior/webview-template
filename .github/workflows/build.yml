@@ -217,24 +217,14 @@ jobs:
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
             
-          ABS_ZIP_PATH="$(pwd)/upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME"
-          echo "Uploading source from: $ABS_ZIP_PATH"
-            
-          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
-          set ssl:verify-certificate no
-            
-          # 1. Safely drift down into the existing builds directory tree context
-          cd builds
-            
-          # 2. Use a blind execution sequence to switch folder workspaces.
-          # If the folder doesn't exist, cd will fail, so we catch it and create it natively.
-          cd $EMAIL_FOLDER || mkdir $EMAIL_FOLDER; cd $EMAIL_FOLDER
-          cd $PACKAGE_NAME || mkdir $PACKAGE_NAME; cd $PACKAGE_NAME
-            
-          # 3. Drop the binary payload package into place now that pathing is guaranteed
-          put "$ABS_ZIP_PATH" -o "$ZIP_FILE_NAME"
-          bye
-          EOF
+          # We pass the SSL override directly into the connection flag string via the '--eval' engine.
+          # This guarantees that the certificate bypass applies BEFORE the connection handshake executes.
+          lftp --eval "set ssl:verify-certificate no" \
+            -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" \
+            "${{ secrets.FTP_SERVER }}" -e "
+          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
+          quit;
+          "
 
       - name: Process Completion and Release Workspace Lock
         if: always()
@@ -242,9 +232,11 @@ jobs:
           EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
           PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
         run: |
-          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
-          set ssl:verify-certificate no
-          cd builds/$EMAIL_FOLDER/$PACKAGE_NAME/ || true
-          rm -f build.lock
-          bye
-          EOF
+          # Use the exact matching inline syntax to access the directory structure and wipe the lock file clean
+          lftp --eval "set ssl:verify-certificate no" \
+                -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" \
+                "${{ secrets.FTP_SERVER }}" -e "
+          cd /$EMAIL_FOLDER/$PACKAGE_NAME/ || cd $EMAIL_FOLDER/$PACKAGE_NAME/ || true;
+            rm -f build.lock;
+            quit;
+          "
