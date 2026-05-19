@@ -96,4 +96,6 @@ dependencies {
     implementation(
         "com.google.android.ump:user-messaging-platform:4.0.0"
     )
+
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0")
 }

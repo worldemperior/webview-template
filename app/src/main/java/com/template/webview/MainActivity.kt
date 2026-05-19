@@ -1,16 +1,17 @@
+// FILE: app/src/main/java/com/template/webview/MainActivity.kt
+
 package com.template.webview
 
-import android.R.attr.fontWeight
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowInsets
+import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -20,11 +21,11 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
-import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.navigation.NavigationView
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
@@ -36,6 +37,7 @@ import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private var interstitialAd: InterstitialAd? = null
     private var clickCount = 0
 
@@ -44,15 +46,18 @@ class MainActivity : ComponentActivity() {
     private val interstitialAdId = "INTERSTITIAL_AD_ID_PLACEHOLDER"
 
     // Dynamic Anti-Rejection Policy Configurations
-    private val useDrawer = false     // Changed from CONFIG_USE_DRAWER
-    private val useRating = false     // Changed from CONFIG_USE_RATING
-    private val useTitleBar = false   // Changed from CONFIG_USE_TITLEBAR
-    private val titleText = "My App"  // Changed from "CONFIG_TITLE_TEXT"
+    private val useDrawer = false
+    private val useRating = false
+    private val useTitleBar = false
+    private val titleText = "My App"
 
 
     @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 1. Lock screen runtime configuration strictly to Vertical Portrait Orientation
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         // Force edge-to-edge execution so nothing clips behind punch-holes, notches, or system navigators
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -64,7 +69,7 @@ class MainActivity : ComponentActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT
         )
 
-        // Inner Vertical Layout Containment Module (Title + WebView + Ad)
+        // Inner Vertical Layout Containment Module (Title + SwipeRefresh/WebView + Ad)
         val mainContainer = LinearLayout(this)
         mainContainer.orientation = LinearLayout.VERTICAL
         mainContainer.layoutParams = LinearLayout.LayoutParams(
@@ -83,7 +88,7 @@ class MainActivity : ComponentActivity() {
         if (useTitleBar) {
             val titleBar = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
-                setBackgroundColor(0xFFF2F2F7.toInt()) // Fixed background invocation
+                setBackgroundColor(0xFFF2F2F7.toInt())
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
@@ -105,7 +110,7 @@ class MainActivity : ComponentActivity() {
             val titleView = TextView(this).apply {
                 text = titleText
                 textSize = 18f
-                setTypeface(null, android.graphics.Typeface.BOLD) // Fixed bold typeface invocation
+                setTypeface(null, android.graphics.Typeface.BOLD)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT
@@ -117,17 +122,27 @@ class MainActivity : ComponentActivity() {
 
         // --- Core Engine Setup: WebView Instance ---
         webView = WebView(this).apply {
-            layoutParams = LinearLayout.LayoutParams(
+            layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                0,
-                1f
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
+
+            // Core DOM Authentication Optimizations
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.loadsImagesAutomatically = true
             settings.allowFileAccess = true
             settings.allowContentAccess = true
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+
+            // Bypasses "Error 403: disallowed_useragent" by mimicking full mobile stable Chrome build patterns
+            val chromeUserAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+            settings.userAgentString = chromeUserAgent
+
+            // Configure cookie container rules for multi-domain OAuth redirections
+            val cookieManager = CookieManager.getInstance()
+            cookieManager.setAcceptCookie(true)
+            cookieManager.setAcceptThirdPartyCookies(this, true)
 
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -143,6 +158,10 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
+
+                    // Kill native refresh wheel rotation when target document finishes mounting
+                    swipeRefreshLayout.isRefreshing = false
+
                     clickCount++
                     if (clickCount >= 4) {
                         showInterstitial()
@@ -151,7 +170,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        mainContainer.addView(webView)
+
+        // --- Pull to Refresh Container Framework Insertion ---
+        swipeRefreshLayout = SwipeRefreshLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+            setColorSchemeColors(0xFF007AFF.toInt()) // Standard native layout accents
+            setOnRefreshListener {
+                webView.reload()
+            }
+            // Bind our fully optimized web view directly inside the pull-to-refresh canvas wrapper
+            addView(webView)
+        }
+        mainContainer.addView(swipeRefreshLayout)
 
         // --- AdMob Integration: Banner Framework ---
         if (bannerAdId != "BANNER_DISABLED") {
@@ -211,7 +245,7 @@ class MainActivity : ComponentActivity() {
         when (contentType) {
             "WEBSITE" -> webView.loadUrl(urlPayload)
             "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
-            "HTML_FILE" -> webView.loadUrl(dataPayload) // Dynamic file URL string from builder destination
+            "HTML_FILE" -> webView.loadUrl(dataPayload)
             else -> webView.loadUrl("file:///android_asset/index.html")
         }
 
@@ -229,11 +263,13 @@ class MainActivity : ComponentActivity() {
         })
     }
 
+    // Completely reformatted, friendly UX modal dialog sequence mapping
     private fun triggerRatingSystem() {
         AlertDialog.Builder(this)
-            .setTitle("Enjoying our platform?")
-            .setMessage("If you love our experience, please take a moment to drop a rating on the Google Play Store!")
-            .setPositiveButton("Rate Portfolio Now") { dialog, _ ->
+            .setTitle("Support Our Community!")
+            .setMessage("If you enjoy using $titleText, please share your thoughts on the Google Play Store. It helps us keep improving your experience!")
+            .setCancelable(true)
+            .setPositiveButton("Rate Us 5 Stars") { dialog, _ ->
                 dialog.dismiss()
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
@@ -241,7 +277,7 @@ class MainActivity : ComponentActivity() {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
                 }
             }
-            .setNegativeButton("Remind Me Later") { dialog, _ -> dialog.dismiss() }
+            .setNegativeButton("Maybe Later") { dialog, _ -> dialog.dismiss() }
             .create()
             .show()
     }
