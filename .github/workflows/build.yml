@@ -217,20 +217,17 @@ jobs:
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
             
-          # Calculate the absolute path of the zip file on the runner workspace
+          # Calculate the local file tracking locations cleanly
           ABS_ZIP_PATH="$(pwd)/upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME"
-          echo "Uploading local file from: $ABS_ZIP_PATH"
+          echo "Uploading source from: $ABS_ZIP_PATH"
             
-          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
+          # We log directly into the deep path context via the URL string itself!
+          # This forces the FTP connection wrapper to automatically mount right inside your project directory context.
+          lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}/builds/$EMAIL_FOLDER/$PACKAGE_NAME/" <<EOF
           set ssl:verify-certificate no
             
-          # Force create remote structures. lftp's 'mkdir -f' safely ignores existing directories natively!
-          mkdir -f builds
-          mkdir -f builds/$EMAIL_FOLDER
-          mkdir -f builds/$EMAIL_FOLDER/$PACKAGE_NAME
-            
-          # Use the absolute local path to prevent directory relative shifting bugs
-          put "$ABS_ZIP_PATH" -o builds/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME
+          # Simple, bulletproof upload directly into the active mounted folder scope
+          put "$ABS_ZIP_PATH" -o "$ZIP_FILE_NAME"
           bye
           EOF
 
