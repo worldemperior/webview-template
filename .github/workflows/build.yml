@@ -246,3 +246,28 @@ jobs:
           put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME
           bye
           EOF
+
+      - name: Process Completion and Release Workspace Lock
+        if: always()
+        env:
+          EMAIL: ${{ github.event.client_payload.config.email }}
+          EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
+          PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
+          ZIP_NAME: ${{ github.event.client_payload.config.zipName }}
+          BUILD_SUCCESSFUL: ${{ job.status }}
+        run: |
+            # Remove lock file over FTP
+            lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" -e "
+              cd builds/$EMAIL_FOLDER/$PACKAGE_NAME/;
+              rm -f build.lock;
+              quit;
+            "
+            
+            # If compilation completed cleanly, ping server to send the delivery notification email
+            if [ "${{ env.BUILD_SUCCESSFUL }}" = "success" ]; then
+              DOWNLOAD_URL="https://freestuffonline.xyz/builds/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_NAME"
+              curl -X POST \
+                -d "email=${{ env.EMAIL }}" \
+                -d "url=$DOWNLOAD_URL" \
+                https://freestuffonline.xyz/notify_success.php
+            fi
