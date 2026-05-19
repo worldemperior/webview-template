@@ -219,9 +219,8 @@ jobs:
             
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
           set ssl:verify-certificate no
-          mkdir -p /builds/$EMAIL_FOLDER
-          mkdir -p /builds/$EMAIL_FOLDER/$PACKAGE_NAME
-          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /builds/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME
+          # -D forces lftp to silently handle missing parent paths automatically without crashing if they exist
+          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o builds/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -D
           bye
           EOF
 
@@ -231,10 +230,9 @@ jobs:
           EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
           PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
         run: |
-          # Use a multi-line script execution block to bypass strict SSL verification here too
           lftp -u "${{ secrets.FTP_USERNAME }}","${{ secrets.FTP_PASSWORD }}" "${{ secrets.FTP_SERVER }}" <<EOF
           set ssl:verify-certificate no
-          cd builds/$EMAIL_FOLDER/$PACKAGE_NAME/
+          cd builds/$EMAIL_FOLDER/$PACKAGE_NAME/ || true
           rm -f build.lock
           bye
           EOF
