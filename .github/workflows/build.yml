@@ -5,7 +5,9 @@ on:
     types: [build-apk]
 
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
 
     env:
@@ -28,14 +30,15 @@ jobs:
       KEY_ALIAS: ${{ github.event.client_payload.config.keyAlias }}
       KEY_PASSWORD: ${{ github.event.client_payload.config.keyPassword }}
       ZIP_NAME: ${{ github.event.client_payload.config.zipName }}
+
+      # Anti-Rejection Policy Variables
       USE_DRAWER: ${{ github.event.client_payload.config.useDrawer }}
       USE_RATING: ${{ github.event.client_payload.config.useRating }}
       USE_TITLEBAR: ${{ github.event.client_payload.config.useTitleBar }}
       TITLE_TEXT: ${{ github.event.client_payload.config.titleBarText }}
-      DRAWER_TITLES: ${{ github.event.client_payload.config.drawerTitles }}
-      DRAWER_URLS: ${{ github.event.client_payload.config.drawerUrls }}
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -45,110 +48,195 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install Dependencies
+      - name: Install ImageMagick
         run: |
-          sudo apt-get update -qq
+          sudo apt-get update
           sudo apt-get install -y imagemagick lftp
+
+      - name: Debug Variables
+        run: |
+          echo "PACKAGE_NAME=$PACKAGE_NAME"
+          echo "ZIP_NAME=$ZIP_NAME"
+          echo "USE_DRAWER=$USE_DRAWER"
+          echo "USE_RATING=$USE_RATING"
+          echo "USE_TITLEBAR=$USE_TITLEBAR"
 
       - name: Replace Application ID and Namespace
         run: |
+          # 1. Update the applicationId and namespace in the build configuration
           sed -i "s|applicationId = \"com.template.webview\"|applicationId = \"$PACKAGE_NAME\"|" app/build.gradle.kts
           sed -i "s|namespace = \"com.template.webview\"|namespace = \"$PACKAGE_NAME\"|" app/build.gradle.kts
 
-      - name: Refactor Kotlin Packages and Directory Structure
+      - name: Refactor Kotlin Packages & Directory Structure
         run: |
-          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
-            -exec sed -i "s|com\.template\.webview|$PACKAGE_NAME|g" {} +
+          # 2. Globally replace the package reference inside all files (Kotlin source files, manifests, layouts)
+          find . -type f \( -name "*.kt" -or -name "*.xml" -or -name "*.gradle*" \) -exec sed -i "s|com.template.webview|$PACKAGE_NAME|g" {} +
+          
+          # 3. Physically move files to a folder path matching the new package name
+          # Convert 'com.example.app' into 'com/example/app'
           NEW_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
+          
+          # Create the new directory path inside your project source directories
           mkdir -p "app/src/main/java/$NEW_DIR"
+          
+          # If files exist in the old folder structure, move them to the new folder structure
           if [ -d "app/src/main/java/com/template/webview" ]; then
             mv app/src/main/java/com/template/webview/* "app/src/main/java/$NEW_DIR/"
             rm -rf app/src/main/java/com/template
           fi
 
-      - name: Inject Boolean Feature Flags
+      - name: Replace Functional Placeholders and Injections
         run: |
+          # Safely convert package dots to forward slashes for the directory path
           PACKAGE_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
-          TARGET="app/src/main/java/$PACKAGE_DIR/MainActivity.kt"
-          sed -i "s/private val useDrawer = false/private val useDrawer = $USE_DRAWER/" "$TARGET"
-          sed -i "s/private val useRating = false/private val useRating = $USE_RATING/" "$TARGET"
-          sed -i "s/private val useTitleBar = false/private val useTitleBar = $USE_TITLEBAR/" "$TARGET"
+          TARGET_MAIN_FILE="app/src/main/java/$PACKAGE_DIR/MainActivity.kt"
+          
+          echo "Targeting file at: $TARGET_MAIN_FILE"
+          
+          # Inject Policy Configurations into MainActivity.kt code definitions dynamically
+          sed -i "s/private val useDrawer = false/private val useDrawer = $USE_DRAWER/g" "$TARGET_MAIN_FILE"
+          sed -i "s/private val useRating = false/private val useRating = $USE_RATING/g" "$TARGET_MAIN_FILE"
+          sed -i "s/private val useTitleBar = false/private val useTitleBar = $USE_TITLEBAR/g" "$TARGET_MAIN_FILE"
+          
+          # Only attempt to inject a title string if TITLE_TEXT isn't empty, otherwise keep default
+          if [ ! -z "$TITLE_TEXT" ]; then
+            sed -i "s/\"My App\"/\"$TITLE_TEXT\"/g" "$TARGET_MAIN_FILE"
+          fi
+          
+          # Standard Template Replacements across the rest of the project files
+          find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
+          find . -type f -exec sed -i "s|URL_PLACEHOLDER|$WEBSITE_URL|g" {} +
+          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
+          find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|$BANNER_AD_ID|g" {} +
+          find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|$INTERSTITIAL_AD_ID|g" {} +
+          find . -type f -exec sed -i "s|VERSION_NAME_PLACEHOLDER|$VERSION_NAME|g" {} +
+          find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|$VERSION_CODE|g" {} +
+          find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|$CONTENT_TYPE|g" {} +
+          find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|$HTML_CODE|g" {} +
 
-      - name: Inject Title Bar Text
+      - name: Download Images
         run: |
-          python3 - <<'PYEOF'
-          # python script here...
-          PYEOF
-
-      - name: Inject Drawer Links
-        run: |
-          python3 - <<'PYEOF'
-          # python script here...
-          PYEOF
-
-      - name: Inject All Remaining Placeholders
-        run: |
-          python3 - <<'PYEOF'
-          # python script here...
-          PYEOF
-
-      - name: Inject Placeholders Into XML and Manifest
-        run: |
-          find app/src/main/res -type f -name "*.xml" -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
-          find app/src/main/res -type f -name "*.xml" -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
-          if [ -f "app/src/main/AndroidManifest.xml" ]; then
-            sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" app/src/main/AndroidManifest.xml
-            sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" app/src/main/AndroidManifest.xml
+          if [ ! -z "$ICON_URL" ]; then
+            wget "$ICON_URL" -O icon.png || true
+          fi
+          if [ ! -z "$SPLASH_URL" ]; then
+            wget "$SPLASH_URL" -O splash.png || true
           fi
 
-      - name: Download Icon and Splash Images
+      - name: Download HTML File
         run: |
-          # wget commands...
-
-      - name: Download HTML File Asset
-        run: |
-          # wget commands...
+          mkdir -p app/src/main/assets
+          if [ "$CONTENT_TYPE" = "HTML_FILE" ]; then
+            wget "$HTML_CODE" -O app/src/main/assets/index.html || true
+          fi
 
       - name: Generate Launcher Icons
         run: |
-          # imagemagick convert commands...
+          if [ -f icon.png ]; then
+            convert icon.png -resize 48x48 app/src/main/res/mipmap-mdpi/ic_launcher.png
+            convert icon.png -resize 72x72 app/src/main/res/mipmap-hdpi/ic_launcher.png
+            convert icon.png -resize 96x96 app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            convert icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            convert icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
-      - name: Process Splash Screen Image
+            cp app/src/main/res/mipmap-mdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+          fi
+
+      - name: Replace Splash Image
         run: |
-          # convert splash.png...
+          mkdir -p app/src/main/res/drawable
+          if [ -f splash.png ]; then
+            convert splash.png \
+              -resize 1080x1920^ \
+              -gravity center \
+              -extent 1080x1920 \
+              PNG32:app/src/main/res/drawable/splash_image.png
+          fi
 
-      - name: Prepare Signing Keystore
+      - name: Prepare Keystore
         run: |
-          # keytool or wget...
+          if [ "$GENERATE_KEYSTORE" = "false" ]; then
+            wget "$KEYSTORE_URL" -O release.jks
+          else
+            keytool -genkey -v \
+              -keystore release.jks \
+              -storepass "$KEYSTORE_PASSWORD" \
+              -alias "$KEY_ALIAS" \
+              -keypass "$KEY_PASSWORD" \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=AppBuilder"
+          fi
 
-      - name: Configure Signing in Gradle
-        run: |
-          python3 - <<'PYEOF'
-          # python script here...
-          PYEOF
-
-      - name: Build Release APK and AAB
+      - name: Build APK and AAB
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease bundleRelease \
-            -Pandroid.injected.signing.store.file="$(pwd)/release.jks" \
-            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
-            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
-            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+          ./gradlew assembleRelease bundleRelease
 
-      - name: Assemble Output Package
+      - name: Prepare Package
         run: |
-          # package assembly commands...
+          mkdir -p package
+          find app/build/outputs/apk/release -name "*.apk" -exec cp {} package/app-release.apk \;
+          find app/build/outputs/bundle/release -name "*.aab" -exec cp {} package/app-release.aab \;
+          cp release.jks package/ || true
 
-      - name: Create ZIP Archive
+          if [ -f icon.png ]; then
+            cp icon.png package/
+          fi
+          if [ -f splash.png ]; then
+            cp splash.png package/
+          fi
+
+          echo "App Name: $APP_NAME" > package/build-info.txt
+          echo "" >> package/build-info.txt
+          echo "Package ID: $PACKAGE_NAME" >> package/build-info.txt
+          echo "" >> package/build-info.txt
+          echo "Version Name: $VERSION_NAME" >> package/build-info.txt
+          echo "" >> package/build-info.txt
+          echo "Version Code: $VERSION_CODE" >> package/build-info.txt
+          echo "" >> package/build-info.txt
+          echo "Keystore Password: $KEYSTORE_PASSWORD" >> package/build-info.txt
+          echo "" >> package/build-info.txt
+          echo "Key Alias: $KEY_ALIAS" >> package/build-info.txt
+          echo "" >> package/build-info.txt
+          echo "Key Password: $KEY_PASSWORD" >> package/build-info.txt
+
+      - name: Create ZIP
         run: |
-          # zip commands...
+          GENERATED_ZIP_NAME=$(echo "${{ github.event.client_payload.config.packageName }}" | tr '.' '_')_build.zip
+          echo "ZIP_FILE_NAME=$GENERATED_ZIP_NAME" >> $GITHUB_ENV
+          zip -r "$GENERATED_ZIP_NAME" package
 
-      - name: Upload ZIP via FTP
+      - name: Upload ZIP
         run: |
-          # lftp commands...
+          mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
+          mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
+          
+          # We execute everything using the -c flag, chaining the commands with semicolons.
+          # This forces lftp to process the certificate ignore rule right out of the gate.
+          lftp -c "
+          set ssl:verify-certificate no;
+          open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
+          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
+          quit;
+          "
 
-      - name: Release Build Lock
+      - name: Process Completion and Release Workspace Lock
         if: always()
+        env:
+          EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
+          PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
         run: |
-          # lftp cleanup...
+          # Use the exact same chained execution to cleanly login and clear out the build.lock file
+          lftp -c "
+            set ssl:verify-certificate no;
+            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
+            cd /$EMAIL_FOLDER/$PACKAGE_NAME/ || cd $EMAIL_FOLDER/$PACKAGE_NAME/ || true;
+            rm -f build.lock;
+            quit;
+          "
