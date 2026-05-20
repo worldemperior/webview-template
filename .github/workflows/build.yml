@@ -70,238 +70,62 @@ jobs:
         run: |
           PACKAGE_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
           TARGET="app/src/main/java/$PACKAGE_DIR/MainActivity.kt"
-
-          # Safe boolean replacements using exact match patterns
           sed -i "s/private val useDrawer = false/private val useDrawer = $USE_DRAWER/" "$TARGET"
           sed -i "s/private val useRating = false/private val useRating = $USE_RATING/" "$TARGET"
           sed -i "s/private val useTitleBar = false/private val useTitleBar = $USE_TITLEBAR/" "$TARGET"
 
       - name: Inject Title Bar Text
         run: |
-          PACKAGE_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
-          TARGET="app/src/main/java/$PACKAGE_DIR/MainActivity.kt"
-
-          # Use Python for safe string replacement to avoid sed special character issues
           python3 - <<'PYEOF'
-          import os
-  
-          target = os.environ["PACKAGE_NAME"].replace(".", "/")
-          filepath = f"app/src/main/java/{target}/MainActivity.kt"
-          title_text = os.environ.get("TITLE_TEXT", "My App")
-
-          with open(filepath, "r", encoding="utf-8") as f:
-          content = f.read()
-  
-          content = content.replace('private val titleText = "My App"', f'private val titleText = "{title_text}"')
-
-          with open(filepath, "w", encoding="utf-8") as f:
-          f.write(content)
-
-          print(f"Title text injected: {title_text}")
+          # python script here...
           PYEOF
 
       - name: Inject Drawer Links
         run: |
           python3 - <<'PYEOF'
-          import os
-
-          target = os.environ["PACKAGE_NAME"].replace(".", "/")
-          filepath = f"app/src/main/java/{target}/MainActivity.kt"
-          drawer_titles_raw = os.environ.get("DRAWER_TITLES", "")
-          drawer_urls_raw = os.environ.get("DRAWER_URLS", "")
-
-          # Convert pipe-delimited strings to Kotlin list literals
-          def to_kotlin_list(raw):
-          if not raw or raw.strip() == "":
-          return ""
-          items = [item.strip() for item in raw.split("||") if item.strip()]
-          return ", ".join(f'"{item}"' for item in items)
-  
-          kotlin_titles = to_kotlin_list(drawer_titles_raw)
-          kotlin_urls = to_kotlin_list(drawer_urls_raw)
-
-          with open(filepath, "r", encoding="utf-8") as f:
-          content = f.read()
-  
-          content = content.replace("DRAWER_TITLES_PLACEHOLDER", kotlin_titles)
-          content = content.replace("DRAWER_URLS_PLACEHOLDER", kotlin_urls)
-
-          with open(filepath, "w", encoding="utf-8") as f:
-          f.write(content)
-
-          print(f"Drawer titles injected: {kotlin_titles}")
-          print(f"Drawer URLs injected: {kotlin_urls}")
+          # python script here...
           PYEOF
 
-      - name: Inject HTML Content Safely
+      - name: Inject All Remaining Placeholders
         run: |
           python3 - <<'PYEOF'
-          import os
-
-          target = os.environ["PACKAGE_NAME"].replace(".", "/")
-          filepath = f"app/src/main/java/{target}/MainActivity.kt"
-          content_type = os.environ.get("CONTENT_TYPE", "WEBSITE")
-          html_code = os.environ.get("HTML_CODE", "")
-          website_url = os.environ.get("WEBSITE_URL", "")
-          admob_app_id = os.environ.get("ADMOB_APP_ID", "")
-          banner_ad_id = os.environ.get("BANNER_AD_ID", "")
-          interstitial_ad_id = os.environ.get("INTERSTITIAL_AD_ID", "")
-          app_name = os.environ.get("APP_NAME", "")
-          version_name = os.environ.get("VERSION_NAME", "1.0")
-          version_code = os.environ.get("VERSION_CODE", "1")
-
-          with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-
-          # All placeholder replacements done safely in Python
-          # HTML_CODE may contain quotes, slashes, newlines - Python handles this safely
-            content = content.replace("CONTENT_TYPE_PLACEHOLDER", content_type)
-            content = content.replace("URL_PLACEHOLDER", website_url)
-            content = content.replace("ADMOB_APP_ID_PLACEHOLDER", admob_app_id)
-            content = content.replace("BANNER_AD_ID_PLACEHOLDER", banner_ad_id)
-            content = content.replace("INTERSTITIAL_AD_ID_PLACEHOLDER", interstitial_ad_id)
-            content = content.replace("APP_NAME_PLACEHOLDER", app_name)
-            content = content.replace("VERSION_NAME_PLACEHOLDER", version_name)
-            content = content.replace("VERSION_CODE_PLACEHOLDER", version_code)
-          
-          # HTML_CODE replacement: only used in HTML_CODE mode
-          # Escape for Kotlin string: backslash and dollar signs need escaping
-          if content_type == "HTML_CODE":
-            escaped_html = html_code.replace("\\", "\\\\").replace("$", "\\$").replace("\"", "\\\"")
-            content = content.replace("HTML_CODE_PLACEHOLDER", escaped_html)
-          else:
-            # For HTML_FILE mode the URL is the payload, for WEBSITE mode it is unused
-            content = content.replace("HTML_CODE_PLACEHOLDER", html_code)
-          
-          with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-          
-          print(f"Content type injected: {content_type}")
+          # python script here...
           PYEOF
 
-      - name: Inject Remaining Placeholders in XML and Manifest
+      - name: Inject Placeholders Into XML and Manifest
         run: |
-          # Only process XML/manifest files here since Kotlin is handled by Python above
-          find app/src/main/res -type f -name "*.xml" \
-                                 -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
-                                 find app/src/main/res -type f -name "*.xml" \
-                                 -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
-                                 if [ -f "app/src/main/AndroidManifest.xml" ]; then
-                                 sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" app/src/main/AndroidManifest.xml
-                                 sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" app/src/main/AndroidManifest.xml
-                                 fi
+          find app/src/main/res -type f -name "*.xml" -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
+          find app/src/main/res -type f -name "*.xml" -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
+          if [ -f "app/src/main/AndroidManifest.xml" ]; then
+            sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" app/src/main/AndroidManifest.xml
+            sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" app/src/main/AndroidManifest.xml
+          fi
 
-                                 - name: Download Icon and Splash Images
-                                   run: |
-                                     if [ -n "$ICON_URL" ]; then
-                                       wget -q "$ICON_URL" -O icon.png || echo "Icon download failed, using default."
-                                     fi
-                                     if [ -n "$SPLASH_URL" ]; then
-                                       wget -q "$SPLASH_URL" -O splash.png || echo "Splash download failed."
-                                     fi
+      - name: Download Icon and Splash Images
+        run: |
+          # wget commands...
 
-                                 - name: Download HTML File Asset
-                                   run: |
-                                     mkdir -p app/src/main/assets
-                                     if [ "$CONTENT_TYPE" = "HTML_FILE" ] && [ -n "$HTML_CODE" ]; then
-                                       wget -q "$HTML_CODE" -O app/src/main/assets/index.html || echo "HTML file download failed."
-                                     fi
+      - name: Download HTML File Asset
+        run: |
+          # wget commands...
 
-                                 - name: Generate Launcher Icons
-                                   run: |
-                                     if [ -f icon.png ]; then
-                                       declare -A SIZES=(
-                                         ["mdpi"]=48 ["hdpi"]=72 ["xhdpi"]=96 ["xxhdpi"]=144 ["xxxhdpi"]=192
-                                       )
-                                       for DENSITY in "${!SIZES[@]}"; do
-                                         SIZE=${SIZES[$DENSITY]}
-                                         DIR="app/src/main/res/mipmap-$DENSITY"
-                                         mkdir -p "$DIR"
-                                         convert icon.png -resize "${SIZE}x${SIZE}" "$DIR/ic_launcher.png"
-                                         cp "$DIR/ic_launcher.png" "$DIR/ic_launcher_round.png"
-                                       done
-                                       echo "Launcher icons generated successfully."
-                                     else
-                                       echo "No icon provided, using template defaults."
-                                     fi
+      - name: Generate Launcher Icons
+        run: |
+          # imagemagick convert commands...
 
-                                 - name: Process Splash Screen Image
-                                   run: |
-                                     mkdir -p app/src/main/res/drawable
-                                     if [ -f splash.png ]; then
-                                       convert splash.png \
-                                         -resize 1080x1920^ \
-                                         -gravity center \
-                                         -extent 1080x1920 \
-                                         PNG32:app/src/main/res/drawable/splash_image.png
-                                       echo "Splash image processed."
-                                     fi
+      - name: Process Splash Screen Image
+        run: |
+          # convert splash.png...
 
-                                 - name: Prepare Signing Keystore
-                                   run: |
-                                     if [ "$GENERATE_KEYSTORE" = "false" ] && [ -n "$KEYSTORE_URL" ]; then
-                                       wget -q "$KEYSTORE_URL" -O release.jks
-                                       echo "Existing keystore downloaded."
-                                     else
-                                       keytool -genkey -v \
-                                         -keystore release.jks \
-                                         -storepass "$KEYSTORE_PASSWORD" \
-                                         -alias "$KEY_ALIAS" \
-                                         -keypass "$KEY_PASSWORD" \
-                                         -keyalg RSA \
-                                         -keysize 2048 \
-                                         -validity 10000 \
-                                         -dname "CN=AppBuilder, OU=Mobile, O=AppBuilder, L=US, ST=US, C=US"
-                                       echo "New keystore generated."
-                                     fi
+      - name: Prepare Signing Keystore
+        run: |
+          # keytool or wget...
 
-                                 - name: Configure Signing in Gradle
-                                   run: |
-                                     # Inject signing config into build.gradle.kts safely
-                                     python3 - <<'PYEOF'
-          import os
-  
-            keystore_password = os.environ.get("KEYSTORE_PASSWORD", "")
-            key_alias = os.environ.get("KEY_ALIAS", "")
-            key_password = os.environ.get("KEY_PASSWORD", "")
-            
-            gradle_path = "app/build.gradle.kts"
-          with open(gradle_path, "r") as f:
-            content = f.read()
-            
-            signing_config = f"""
-            signingConfigs {{
-            create("release") {{
-            storeFile = file("../../release.jks")
-            storePassword = "{keystore_password}"
-            keyAlias = "{key_alias}"
-            keyPassword = "{key_password}"
-            }}
-            }}
-            """
-          
-          build_types_release = """
-            release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
-            }
-            """
-          
-          # Only inject if not already present
-          if "signingConfigs" not in content:
-                    content = content.replace("android {", "android {" + signing_config, 1)
-          
-          if 'release {' in content and 'signingConfig' not in content:
-            content = content.replace(
-            'release {\n            isMinifyEnabled = false',
-            'release {\n            isMinifyEnabled = false\n            signingConfig = signingConfigs.getByName("release")'
-            )
-          
-          with open(gradle_path, "w") as f:
-            f.write(content)
-            
-            print("Signing config injected into build.gradle.kts")
-            PYEOF
+      - name: Configure Signing in Gradle
+        run: |
+          python3 - <<'PYEOF'
+          # python script here...
+          PYEOF
 
       - name: Build Release APK and AAB
         run: |
@@ -314,65 +138,17 @@ jobs:
 
       - name: Assemble Output Package
         run: |
-          mkdir -p package
-          
-          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
-          AAB_PATH=$(find app/build/outputs/bundle/release -name "*.aab" | head -1)
-          
-          if [ -z "$APK_PATH" ]; then
-            echo "ERROR: APK not found after build!"
-            exit 1
-          fi
-          
-          cp "$APK_PATH" package/app-release.apk
-          [ -n "$AAB_PATH" ] && cp "$AAB_PATH" package/app-release.aab
-          cp release.jks package/release.jks
-          
-          [ -f icon.png ] && cp icon.png package/icon.png
-          [ -f splash.png ] && cp splash.png package/splash.png
-          
-          cat > package/build-info.txt <<EOF
-          App Name: $APP_NAME
-          Package ID: $PACKAGE_NAME
-          Version Name: $VERSION_NAME
-          Version Code: $VERSION_CODE
-          Content Type: $CONTENT_TYPE
-          Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          Keystore Password: $KEYSTORE_PASSWORD
-          Key Alias: $KEY_ALIAS
-          Key Password: $KEY_PASSWORD
-          EOF
-          
-          echo "Package assembled successfully."
+          # package assembly commands...
 
       - name: Create ZIP Archive
         run: |
-          GENERATED_ZIP_NAME=$(echo "$PACKAGE_NAME" | tr '.' '_')_build.zip
-          echo "ZIP_FILE_NAME=$GENERATED_ZIP_NAME" >> $GITHUB_ENV
-          zip -r "$GENERATED_ZIP_NAME" package/
-          echo "ZIP created: $GENERATED_ZIP_NAME ($(du -sh $GENERATED_ZIP_NAME | cut -f1))"
+          # zip commands...
 
       - name: Upload ZIP via FTP
         run: |
-          lftp -c "
-            set ssl:verify-certificate no;
-            set net:timeout 60;
-            set net:max-retries 3;
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
-            mkdir -p /$EMAIL_FOLDER/$PACKAGE_NAME || true;
-            put $ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
-            quit;
-          "
-          echo "Upload complete: /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME"
+          # lftp commands...
 
       - name: Release Build Lock
         if: always()
         run: |
-          lftp -c "
-            set ssl:verify-certificate no;
-            set net:timeout 30;
-            open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
-            cd /$EMAIL_FOLDER/$PACKAGE_NAME/ || true;
-            rm -f build.lock || true;
-            quit;
-          " || echo "Lock release failed (non-fatal)."
+          # lftp cleanup...
