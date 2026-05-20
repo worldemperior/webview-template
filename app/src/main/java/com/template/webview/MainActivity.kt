@@ -147,8 +147,16 @@ class MainActivity : ComponentActivity() {
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val urlStr = request?.url?.toString() ?: ""
+
+                    // 1. Increment click count ONLY when a link request navigation event is actively processed
+                    clickCount++
+                    if (clickCount >= 4) {
+                        showInterstitial()
+                        clickCount = 0
+                    }
+
                     if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
-                        return false
+                        return false // Let the WebView load the clicked URL link natively
                     }
                     return try {
                         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlStr)))
@@ -158,15 +166,8 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-
-                    // Kill native refresh wheel rotation when target document finishes mounting
+                    // 2. Remove the ad logic tracking completely from here to prevent background reload popups!
                     swipeRefreshLayout.isRefreshing = false
-
-                    clickCount++
-                    if (clickCount >= 4) {
-                        showInterstitial()
-                        clickCount = 0
-                    }
                 }
             }
         }
