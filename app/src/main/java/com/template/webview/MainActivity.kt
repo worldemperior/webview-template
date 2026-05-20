@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
     private val useTitleBar = false
     private val titleText = "My App"
 
+    // NEW: Dynamic Drawer Link Placeholders
+    private val drawerTitles = listOf(DRAWER_TITLES_PLACEHOLDER)
+    private val drawerUrls = listOf(DRAWER_URLS_PLACEHOLDER)
 
     @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -221,9 +224,34 @@ class MainActivity : ComponentActivity() {
             navigationView.layoutParams = params
 
             val menu = navigationView.menu
+
+            // Standard Home Entry
             menu.add("Home Portal").setOnMenuItemClickListener {
                 drawerLayout.closeDrawers()
+                // Reloads the base URL
+                val contentType = "CONTENT_TYPE_PLACEHOLDER"
+                val dataPayload = "HTML_CODE_PLACEHOLDER"
+                val urlPayload = "URL_PLACEHOLDER"
+                when (contentType) {
+                    "WEBSITE" -> webView.loadUrl(urlPayload)
+                    "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
+                    "HTML_FILE" -> webView.loadUrl(dataPayload)
+                    else -> webView.loadUrl("file:///android_asset/index.html")
+                }
                 true
+            }
+
+            // NEW: Inject Custom User Links
+            if (drawerTitles.isNotEmpty() && drawerTitles[0].isNotBlank() && drawerTitles[0] != "DRAWER_TITLES_PLACEHOLDER") {
+                for (i in drawerTitles.indices) {
+                    if (i < drawerUrls.size) {
+                        menu.add(drawerTitles[i]).setOnMenuItemClickListener {
+                            drawerLayout.closeDrawers()
+                            webView.loadUrl(drawerUrls[i])
+                            true
+                        }
+                    }
+                }
             }
 
             if (useRating) {
