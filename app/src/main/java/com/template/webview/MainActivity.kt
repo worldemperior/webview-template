@@ -51,6 +51,19 @@ class MainActivity : ComponentActivity() {
     private val useTitleBar = false
     private val titleText = "My App"
 
+    // Custom Webview Navigation Drawer Items
+    private val dItem0Title = "DRAWER_ITEM_0_TITLE_PLACEHOLDER"
+    private val dItem0Url = "DRAWER_ITEM_0_URL_PLACEHOLDER"
+
+    private val dItem1Title = "DRAWER_ITEM_1_TITLE_PLACEHOLDER"
+    private val dItem1Url = "DRAWER_ITEM_1_URL_PLACEHOLDER"
+
+    private val dItem2Title = "DRAWER_ITEM_2_TITLE_PLACEHOLDER"
+    private val dItem2Url = "DRAWER_ITEM_2_URL_PLACEHOLDER"
+
+    private val dItem3Title = "DRAWER_ITEM_3_TITLE_PLACEHOLDER"
+    private val dItem3Url = "DRAWER_ITEM_3_URL_PLACEHOLDER"
+
 
     @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -221,9 +234,49 @@ class MainActivity : ComponentActivity() {
             navigationView.layoutParams = params
 
             val menu = navigationView.menu
+
+            // Standard Default Base Route
             menu.add("Home Portal").setOnMenuItemClickListener {
                 drawerLayout.closeDrawers()
+                // Safely route back to standard homepage context configuration tracking
+                val defaultUrl = "URL_PLACEHOLDER"
+                val defaultType = "CONTENT_TYPE_PLACEHOLDER"
+                if (defaultType == "WEBSITE") {
+                    webView.loadUrl(defaultUrl)
+                } else {
+                    webView.loadUrl("file:///android_asset/index.html")
+                }
                 true
+            }
+
+            // Dynamic Custom Link Injection Engine Mapping
+            if (dItem0Title.isNotBlank() && !dItem0Title.contains("PLACEHOLDER") && dItem0Url.isNotBlank()) {
+                menu.add(dItem0Title).setOnMenuItemClickListener {
+                    drawerLayout.closeDrawers()
+                    webView.loadUrl(dItem0Url)
+                    true
+                }
+            }
+            if (dItem1Title.isNotBlank() && !dItem1Title.contains("PLACEHOLDER") && dItem1Url.isNotBlank()) {
+                menu.add(dItem1Title).setOnMenuItemClickListener {
+                    drawerLayout.closeDrawers()
+                    webView.loadUrl(dItem1Url)
+                    true
+                }
+            }
+            if (dItem2Title.isNotBlank() && !dItem2Title.contains("PLACEHOLDER") && dItem2Url.isNotBlank()) {
+                menu.add(dItem2Title).setOnMenuItemClickListener {
+                    drawerLayout.closeDrawers()
+                    webView.loadUrl(dItem2Url)
+                    true
+                }
+            }
+            if (dItem3Title.isNotBlank() && !dItem3Title.contains("PLACEHOLDER") && dItem3Url.isNotBlank()) {
+                menu.add(dItem3Title).setOnMenuItemClickListener {
+                    drawerLayout.closeDrawers()
+                    webView.loadUrl(dItem3Url)
+                    true
+                }
             }
 
             if (useRating) {
