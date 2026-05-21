@@ -53,18 +53,18 @@ class MainActivity : ComponentActivity() {
     private val useTitleBar = false
     private val titleText = "My App"
 
-    // Custom Webview Navigation Drawer Items
-    private val dItem0Title = "DRAWER_ITEM_0_TITLE_PLACEHOLDER"
-    private val dItem0Url = "DRAWER_ITEM_0_URL_PLACEHOLDER"
+    // Custom Webview Navigation Drawer Keys (Changed to prevent global SED text collision)
+    private val dItem0Title = "DRAWER_TITLE_0_CUSTOM"
+    private val dItem0Url = "DRAWER_LINK_0_CUSTOM"
 
-    private val dItem1Title = "DRAWER_ITEM_1_TITLE_PLACEHOLDER"
-    private val dItem1Url = "DRAWER_ITEM_1_URL_PLACEHOLDER"
+    private val dItem1Title = "DRAWER_TITLE_1_CUSTOM"
+    private val dItem1Url = "DRAWER_LINK_1_CUSTOM"
 
-    private val dItem2Title = "DRAWER_ITEM_2_TITLE_PLACEHOLDER"
-    private val dItem2Url = "DRAWER_ITEM_2_URL_PLACEHOLDER"
+    private val dItem2Title = "DRAWER_TITLE_2_CUSTOM"
+    private val dItem2Url = "DRAWER_LINK_2_CUSTOM"
 
-    private val dItem3Title = "DRAWER_ITEM_3_TITLE_PLACEHOLDER"
-    private val dItem3Url = "DRAWER_ITEM_3_URL_PLACEHOLDER"
+    private val dItem3Title = "DRAWER_TITLE_3_CUSTOM"
+    private val dItem3Url = "DRAWER_LINK_3_CUSTOM"
 
     @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -202,7 +202,7 @@ class MainActivity : ComponentActivity() {
 
             menu.add("Home Portal").setOnMenuItemClickListener {
                 drawerLayout.closeDrawers()
-                val defaultUrl = "URL_PLACEHOLDER"
+                val defaultUrl = "URL_BASE_MAIN"
                 val defaultType = "CONTENT_TYPE_PLACEHOLDER"
                 if (defaultType == "WEBSITE") {
                     loadSecureUrl(defaultUrl)
@@ -212,28 +212,28 @@ class MainActivity : ComponentActivity() {
                 true
             }
 
-            if (dItem0Title.isNotBlank() && !dItem0Title.contains("PLACEHOLDER") && dItem0Url.isNotBlank()) {
+            if (dItem0Title.isNotBlank() && !dItem0Title.contains("CUSTOM") && dItem0Url.isNotBlank()) {
                 menu.add(dItem0Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
                     loadSecureUrl(dItem0Url)
                     true
                 }
             }
-            if (dItem1Title.isNotBlank() && !dItem1Title.contains("PLACEHOLDER") && dItem1Url.isNotBlank()) {
+            if (dItem1Title.isNotBlank() && !dItem1Title.contains("CUSTOM") && dItem1Url.isNotBlank()) {
                 menu.add(dItem1Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
                     loadSecureUrl(dItem1Url)
                     true
                 }
             }
-            if (dItem2Title.isNotBlank() && !dItem2Title.contains("PLACEHOLDER") && dItem2Url.isNotBlank()) {
+            if (dItem2Title.isNotBlank() && !dItem2Title.contains("CUSTOM") && dItem2Url.isNotBlank()) {
                 menu.add(dItem2Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
                     loadSecureUrl(dItem2Url)
                     true
                 }
             }
-            if (dItem3Title.isNotBlank() && !dItem3Title.contains("PLACEHOLDER") && dItem3Url.isNotBlank()) {
+            if (dItem3Title.isNotBlank() && !dItem3Title.contains("CUSTOM") && dItem3Url.isNotBlank()) {
                 menu.add(dItem3Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
                     loadSecureUrl(dItem3Url)
@@ -253,10 +253,9 @@ class MainActivity : ComponentActivity() {
 
         setContentView(drawerLayout)
 
-        // Initial Routing Setup
         val contentType = "CONTENT_TYPE_PLACEHOLDER"
         val dataPayload = "HTML_CODE_PLACEHOLDER"
-        val urlPayload = "URL_PLACEHOLDER"
+        val urlPayload = "URL_BASE_MAIN"
 
         when (contentType) {
             "WEBSITE" -> loadSecureUrl(urlPayload)
@@ -346,14 +345,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Completely forces hard loading frame targets safely across background task workers
-    // Completely forces hard loading frame targets safely across navigation drawer click events
     private fun loadSecureUrl(rawUrl: String) {
         var cleanUrl = rawUrl.trim()
             .replace("\"", "")
             .replace("'", "")
 
-        if (cleanUrl.isBlank() || cleanUrl.contains("PLACEHOLDER") || cleanUrl.contains("drawer_item_")) {
+        if (cleanUrl.isBlank() || cleanUrl.contains("CUSTOM") || cleanUrl.contains("PLACEHOLDER")) {
             return
         }
 
@@ -369,13 +366,7 @@ class MainActivity : ComponentActivity() {
 
         runOnUiThread {
             webView.stopLoading()
-
-            // To fix the loop back to home, load the new URL FIRST.
             webView.loadUrl(targetUrl)
-
-            // We strip clearHistory() out of here completely.
-            // The WebView will handle changing domains naturally, and it prevents the race condition
-            // that reverts the view back to the original homepage domain.
         }
     }
 }

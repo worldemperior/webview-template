@@ -97,25 +97,34 @@ jobs:
 
       - name: Replace Functional Placeholders and Injections
         run: |
-          # Safely convert package dots to forward slashes for the directory path
           PACKAGE_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
           TARGET_MAIN_FILE="app/src/main/java/$PACKAGE_DIR/MainActivity.kt"
-          
+            
           echo "Targeting file at: $TARGET_MAIN_FILE"
-          
-          # Inject Policy Configurations into MainActivity.kt code definitions dynamically
+            
+          # Inject Policy Configurations
           sed -i "s/private val useDrawer = false/private val useDrawer = $USE_DRAWER/g" "$TARGET_MAIN_FILE"
           sed -i "s/private val useRating = false/private val useRating = $USE_RATING/g" "$TARGET_MAIN_FILE"
           sed -i "s/private val useTitleBar = false/private val useTitleBar = $USE_TITLEBAR/g" "$TARGET_MAIN_FILE"
-          
-          # Only attempt to inject a title string if TITLE_TEXT isn't empty, otherwise keep default
+            
           if [ ! -z "$TITLE_TEXT" ]; then
             sed -i "s/\"My App\"/\"$TITLE_TEXT\"/g" "$TARGET_MAIN_FILE"
           fi
-          
-          # Standard Template Replacements across the rest of the project files
+            
+          # Specific targeted single-file replacements first to prevent global sed overlap leaks
+          sed -i "s|DRAWER_LINK_0_CUSTOM|$DRAWER_ITEM_0_URL|g" "$TARGET_MAIN_FILE"
+          sed -i "s|DRAWER_LINK_1_CUSTOM|$DRAWER_ITEM_1_URL|g" "$TARGET_MAIN_FILE"
+          sed -i "s|DRAWER_LINK_2_CUSTOM|$DRAWER_ITEM_2_URL|g" "$TARGET_MAIN_FILE"
+          sed -i "s|DRAWER_LINK_3_CUSTOM|$DRAWER_ITEM_3_URL|g" "$TARGET_MAIN_FILE"
+            
+          sed -i "s|DRAWER_TITLE_0_CUSTOM|$DRAWER_ITEM_0_TITLE|g" "$TARGET_MAIN_FILE"
+          sed -i "s|DRAWER_TITLE_1_CUSTOM|$DRAWER_ITEM_1_TITLE|g" "$TARGET_MAIN_FILE"
+          sed -i "s|DRAWER_TITLE_2_CUSTOM|$DRAWER_ITEM_2_TITLE|g" "$TARGET_MAIN_FILE"
+          sed -i "s|DRAWER_TITLE_3_CUSTOM|$DRAWER_ITEM_3_TITLE|g" "$TARGET_MAIN_FILE"
+            
+          # Global asset replacement runs safely now
           find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
-          find . -type f -exec sed -i "s|URL_PLACEHOLDER|$WEBSITE_URL|g" {} +
+          find . -type f -exec sed -i "s|URL_BASE_MAIN|$WEBSITE_URL|g" {} +
           find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
           find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|$BANNER_AD_ID|g" {} +
           find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|$INTERSTITIAL_AD_ID|g" {} +
@@ -123,19 +132,6 @@ jobs:
           find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|$VERSION_CODE|g" {} +
           find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|$CONTENT_TYPE|g" {} +
           find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|$HTML_CODE|g" {} +
-          
-          # Inject custom drawer link options dynamically into MainActivity.kt definitions
-          sed -i "s|DRAWER_ITEM_0_TITLE_PLACEHOLDER|$DRAWER_ITEM_0_TITLE|g" "$TARGET_MAIN_FILE"
-          sed -i "s|DRAWER_ITEM_0_URL_PLACEHOLDER|$DRAWER_ITEM_0_URL|g" "$TARGET_MAIN_FILE"
-          
-          sed -i "s|DRAWER_ITEM_1_TITLE_PLACEHOLDER|$DRAWER_ITEM_1_TITLE|g" "$TARGET_MAIN_FILE"
-          sed -i "s|DRAWER_ITEM_1_URL_PLACEHOLDER|$DRAWER_ITEM_1_URL|g" "$TARGET_MAIN_FILE"
-          
-          sed -i "s|DRAWER_ITEM_2_TITLE_PLACEHOLDER|$DRAWER_ITEM_2_TITLE|g" "$TARGET_MAIN_FILE"
-          sed -i "s|DRAWER_ITEM_2_URL_PLACEHOLDER|$DRAWER_ITEM_2_URL|g" "$TARGET_MAIN_FILE"
-          
-          sed -i "s|DRAWER_ITEM_3_TITLE_PLACEHOLDER|$DRAWER_ITEM_3_TITLE|g" "$TARGET_MAIN_FILE"
-          sed -i "s|DRAWER_ITEM_3_URL_PLACEHOLDER|$DRAWER_ITEM_3_URL|g" "$TARGET_MAIN_FILE"
 
       - name: Download Images
         run: |
