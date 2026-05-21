@@ -347,6 +347,7 @@ class MainActivity : ComponentActivity() {
     }
 
     // Completely forces hard loading frame targets safely across background task workers
+    // Completely forces hard loading frame targets safely across navigation drawer click events
     private fun loadSecureUrl(rawUrl: String) {
         var cleanUrl = rawUrl.trim()
             .replace("\"", "")
@@ -368,8 +369,13 @@ class MainActivity : ComponentActivity() {
 
         runOnUiThread {
             webView.stopLoading()
-            webView.clearHistory() // Ensures navigation loops reset cleanly for side menu clicks
+
+            // To fix the loop back to home, load the new URL FIRST.
             webView.loadUrl(targetUrl)
+
+            // We strip clearHistory() out of here completely.
+            // The WebView will handle changing domains naturally, and it prevents the race condition
+            // that reverts the view back to the original homepage domain.
         }
     }
 }
