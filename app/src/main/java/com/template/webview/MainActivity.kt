@@ -1,5 +1,3 @@
-// FILE: app/src/main/java/com/template/webview/MainActivity.kt
-
 package com.template.webview
 
 import android.annotation.SuppressLint
@@ -33,13 +31,19 @@ import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.ump.UserMessagingPlatform
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var webView: WebView
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
+    private lateinit var mainContainer: LinearLayout
     private var interstitialAd: InterstitialAd? = null
     private var clickCount = 0
+
+    // Prevent duplicate initialization calls across asynchronous threads
+    private var isMobileAdsInitializeCalled = AtomicBoolean(false)
 
     // GitHub Build Process Replacements
     private val bannerAdId = "BANNER_AD_ID_PLACEHOLDER"
@@ -64,33 +68,32 @@ class MainActivity : ComponentActivity() {
     private val dItem3Title = "DRAWER_ITEM_3_TITLE_PLACEHOLDER"
     private val dItem3Url = "DRAWER_ITEM_3_URL_PLACEHOLDER"
 
-
     @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Lock screen runtime configuration strictly to Vertical Portrait Orientation
+        // 1. Force strict Vertical Portrait Orientation
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
-        // Force edge-to-edge execution so nothing clips behind punch-holes, notches, or system navigators
+        // 2. Configure edge-to-edge system window display profiles
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Main Base Frame Root (DrawerLayout handles the slide menu if enabled)
+        // Main Base Frame Layer
         val drawerLayout = DrawerLayout(this)
         drawerLayout.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
 
-        // Inner Vertical Layout Containment Module (Title + SwipeRefresh/WebView + Ad)
-        val mainContainer = LinearLayout(this)
+        // Core Layout Content Module Container
+        mainContainer = LinearLayout(this)
         mainContainer.orientation = LinearLayout.VERTICAL
         mainContainer.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
 
-        // Handle System Insets padding to make sure app content shifts dynamically away from system bars
+        // Dynamically compute system padding shifts to avoid status/nav bar clips
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             mainContainer.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -140,7 +143,7 @@ class MainActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
-            // Core DOM Authentication Optimizations
+            // Dom and JavaScript Security Options
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.loadsImagesAutomatically = true
@@ -148,11 +151,10 @@ class MainActivity : ComponentActivity() {
             settings.allowContentAccess = true
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-            // Bypasses "Error 403: disallowed_useragent" by mimicking full mobile stable Chrome build patterns
+            // Standard Stable Mobile Chrome UserAgent Override to prevent Google OAuth 403 blocks
             val chromeUserAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
             settings.userAgentString = chromeUserAgent
 
-            // Configure cookie container rules for multi-domain OAuth redirections
             val cookieManager = CookieManager.getInstance()
             cookieManager.setAcceptCookie(true)
             cookieManager.setAcceptThirdPartyCookies(this, true)
@@ -161,7 +163,7 @@ class MainActivity : ComponentActivity() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val urlStr = request?.url?.toString() ?: ""
 
-                    // 1. Increment click count ONLY when a link request navigation event is actively processed
+                    // Track click iterations cleanly inside structural application nodes
                     clickCount++
                     if (clickCount >= 4) {
                         showInterstitial()
@@ -169,7 +171,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
-                        return false // Let the WebView load the clicked URL link natively
+                        return false
                     }
                     return try {
                         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlStr)))
@@ -179,49 +181,24 @@ class MainActivity : ComponentActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    // 2. Remove the ad logic tracking completely from here to prevent background reload popups!
                     swipeRefreshLayout.isRefreshing = false
                 }
             }
         }
 
-        // --- Pull to Refresh Container Framework Insertion ---
+        // --- Swipe to Refresh Accent Controls ---
         swipeRefreshLayout = SwipeRefreshLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 0,
                 1f
             )
-            setColorSchemeColors(0xFF007AFF.toInt()) // Standard native layout accents
-            setOnRefreshListener {
-                webView.reload()
-            }
-            // Bind our fully optimized web view directly inside the pull-to-refresh canvas wrapper
+            setColorSchemeColors(0xFF007AFF.toInt())
+            setOnRefreshListener { webView.reload() }
             addView(webView)
         }
         mainContainer.addView(swipeRefreshLayout)
 
-        // --- AdMob Integration: Banner Framework ---
-        if (bannerAdId != "BANNER_DISABLED") {
-            MobileAds.initialize(this)
-            val adView = AdView(this).apply {
-                setAdSize(AdSize.BANNER)
-                adUnitId = bannerAdId
-                layoutParams = LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-                loadAd(AdRequest.Builder().build())
-            }
-            mainContainer.addView(adView)
-        }
-
-        if (interstitialAdId != "INTERSTITIAL_DISABLED") {
-            MobileAds.initialize(this)
-            loadInterstitial()
-        }
-
-        // Add core UI view container to the drawer layer
         drawerLayout.addView(mainContainer)
 
         // --- OPTION: Anti-Rejection Navigation Side Menu ---
@@ -235,10 +212,8 @@ class MainActivity : ComponentActivity() {
 
             val menu = navigationView.menu
 
-            // Standard Default Base Route
             menu.add("Home Portal").setOnMenuItemClickListener {
                 drawerLayout.closeDrawers()
-                // Safely route back to standard homepage context configuration tracking
                 val defaultUrl = "URL_PLACEHOLDER"
                 val defaultType = "CONTENT_TYPE_PLACEHOLDER"
                 if (defaultType == "WEBSITE") {
@@ -249,32 +224,32 @@ class MainActivity : ComponentActivity() {
                 true
             }
 
-            // Dynamic Custom Link Injection Engine Mapping
+            // Custom Menu Link Injections backed by defensive parsing
             if (dItem0Title.isNotBlank() && !dItem0Title.contains("PLACEHOLDER") && dItem0Url.isNotBlank()) {
                 menu.add(dItem0Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
-                    webView.loadUrl(dItem0Url)
+                    loadSecureUrl(dItem0Url)
                     true
                 }
             }
             if (dItem1Title.isNotBlank() && !dItem1Title.contains("PLACEHOLDER") && dItem1Url.isNotBlank()) {
                 menu.add(dItem1Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
-                    webView.loadUrl(dItem1Url)
+                    loadSecureUrl(dItem1Url)
                     true
                 }
             }
             if (dItem2Title.isNotBlank() && !dItem2Title.contains("PLACEHOLDER") && dItem2Url.isNotBlank()) {
                 menu.add(dItem2Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
-                    webView.loadUrl(dItem2Url)
+                    loadSecureUrl(dItem2Url)
                     true
                 }
             }
             if (dItem3Title.isNotBlank() && !dItem3Title.contains("PLACEHOLDER") && dItem3Url.isNotBlank()) {
                 menu.add(dItem3Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
-                    webView.loadUrl(dItem3Url)
+                    loadSecureUrl(dItem3Url)
                     true
                 }
             }
@@ -291,7 +266,7 @@ class MainActivity : ComponentActivity() {
 
         setContentView(drawerLayout)
 
-        // --- Target Compilation Deployment Router ---
+        // --- Base Routing Handlers ---
         val contentType = "CONTENT_TYPE_PLACEHOLDER"
         val dataPayload = "HTML_CODE_PLACEHOLDER"
         val urlPayload = "URL_PLACEHOLDER"
@@ -303,7 +278,7 @@ class MainActivity : ComponentActivity() {
             else -> webView.loadUrl("file:///android_asset/index.html")
         }
 
-        // Clean System Back-Press Lifecycle Handler
+        // Back-Press Dispatch Handler Setup
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(Gravity.START)) {
@@ -315,13 +290,52 @@ class MainActivity : ComponentActivity() {
                 }
             }
         })
+
+        // --- Run Consent Validation & Ad Execution Sequence ---
+        ConsentManager.requestConsent(this) {
+            val consentInformation = UserMessagingPlatform.getConsentInformation(this)
+            if (consentInformation.canRequestAds()) {
+                initializeMobileAdsSdk()
+            }
+        }
     }
 
-    // Completely reformatted, friendly UX modal dialog sequence mapping
+    private fun initializeMobileAdsSdk() {
+        // Enforce singular execution logic path across async updates
+        if (isMobileAdsInitializeCalled.getAndSet(true)) {
+            return
+        }
+
+        MobileAds.initialize(this) {
+            runOnUiThread {
+                setupMonetizationFeatures()
+            }
+        }
+    }
+
+    private fun setupMonetizationFeatures() {
+        if (bannerAdId != "BANNER_DISABLED" && !bannerAdId.contains("PLACEHOLDER")) {
+            val adView = AdView(this).apply {
+                setAdSize(AdSize.BANNER)
+                adUnitId = bannerAdId
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+            }
+            mainContainer.addView(adView)
+            adView.loadAd(AdRequest.Builder().build())
+        }
+
+        if (interstitialAdId != "INTERSTITIAL_DISABLED" && !interstitialAdId.contains("PLACEHOLDER")) {
+            loadInterstitial()
+        }
+    }
+
     private fun triggerRatingSystem() {
         AlertDialog.Builder(this)
             .setTitle("Support Our Community!")
-            .setMessage("If you enjoy using $titleText, please share your thoughts on the Google Play Store. It helps us keep improving your experience!")
+            .setMessage("If you enjoy using $titleText, please share your thoughts on the Google Play Store.")
             .setCancelable(true)
             .setPositiveButton("Rate Us 5 Stars") { dialog, _ ->
                 dialog.dismiss()
@@ -348,6 +362,23 @@ class MainActivity : ComponentActivity() {
             interstitialAd?.show(this)
             interstitialAd = null
             loadInterstitial()
+        }
+    }
+
+    // Strips string replacements artifacts and validates secure absolute targets
+    private fun loadSecureUrl(rawUrl: String) {
+        var cleanUrl = rawUrl.trim()
+
+        if (cleanUrl.contains("drawer_item_") || cleanUrl.contains("DRAWER_ITEM_")) {
+            if (cleanUrl.contains("http")) {
+                cleanUrl = cleanUrl.substring(cleanUrl.lastIndexOf("http"))
+            }
+        }
+
+        if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+            webView.loadUrl(cleanUrl)
+        } else {
+            webView.loadUrl("https://$cleanUrl")
         }
     }
 }

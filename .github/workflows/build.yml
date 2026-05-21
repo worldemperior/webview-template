@@ -32,14 +32,14 @@ jobs:
       ZIP_NAME: ${{ github.event.client_payload.config.zipName }}
 
       # Custom App Navigation Menu Items
-      DRAWER_ITEM_0_TITLE: ${{ github.event.client_payload.config.drawerItems[0].title }}
-      DRAWER_ITEM_0_URL: ${{ github.event.client_payload.config.drawerItems[0].url }}
-      DRAWER_ITEM_1_TITLE: ${{ github.event.client_payload.config.drawerItems[1].title }}
-      DRAWER_ITEM_1_URL: ${{ github.event.client_payload.config.drawerItems[1].url }}
-      DRAWER_ITEM_2_TITLE: ${{ github.event.client_payload.config.drawerItems[2].title }}
-      DRAWER_ITEM_2_URL: ${{ github.event.client_payload.config.drawerItems[2].url }}
-      DRAWER_ITEM_3_TITLE: ${{ github.event.client_payload.config.drawerItems[3].title }}
-      DRAWER_ITEM_3_URL: ${{ github.event.client_payload.config.drawerItems[3].url }}
+      DRAWER_ITEM_0_TITLE: ${{ github.event.client_payload.config.drawerItems[0].title || '' }}
+      DRAWER_ITEM_0_URL: ${{ github.event.client_payload.config.drawerItems[0].url || '' }}
+      DRAWER_ITEM_1_TITLE: ${{ github.event.client_payload.config.drawerItems[1].title || '' }}
+      DRAWER_ITEM_1_URL: ${{ github.event.client_payload.config.drawerItems[1].url || '' }}
+      DRAWER_ITEM_2_TITLE: ${{ github.event.client_payload.config.drawerItems[2].title || '' }}
+      DRAWER_ITEM_2_URL: ${{ github.event.client_payload.config.drawerItems[2].url || '' }}
+      DRAWER_ITEM_3_TITLE: ${{ github.event.client_payload.config.drawerItems[3].title || '' }}
+      DRAWER_ITEM_3_URL: ${{ github.event.client_payload.config.drawerItems[3].url || '' }}
 
       # Anti-Rejection Policy Variables
       USE_DRAWER: ${{ github.event.client_payload.config.useDrawer }}

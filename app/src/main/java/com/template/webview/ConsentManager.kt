@@ -1,7 +1,8 @@
 package com.template.webview
 
 import android.app.Activity
-import com.google.android.ump.*
+import com.google.android.ump.ConsentRequestParameters
+import com.google.android.ump.UserMessagingPlatform
 
 object ConsentManager {
 
@@ -9,91 +10,27 @@ object ConsentManager {
         activity: Activity,
         onComplete: () -> Unit
     ) {
+        val params = ConsentRequestParameters.Builder()
+            .setTagForUnderAgeOfConsent(false)
+            .build()
 
-        val params =
-
-            ConsentRequestParameters
-                .Builder()
-                .build()
-
-        val consentInformation =
-
-            UserMessagingPlatform
-                .getConsentInformation(activity)
+        val consentInformation = UserMessagingPlatform.getConsentInformation(activity)
 
         consentInformation.requestConsentInfoUpdate(
-
             activity,
-
             params,
-
             {
-
-                if (
-                    consentInformation
-                        .isConsentFormAvailable
-                ) {
-
-                    loadForm(
-                        activity,
-                        consentInformation,
-                        onComplete
-                    )
-
-                } else {
-
+                // This single unified method loads and shows the form ONLY if required (EEA/UK first launch)
+                // If consent is already OBTAINED or NOT_REQUIRED, it immediately passes to the callback!
+                UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { formError ->
+                    // Proceed regardless of form errors so the app doesn't lock up for the user
                     onComplete()
                 }
             },
-
-            {
-
+            { requestConsentError ->
+                // Fallback for network issues / offline mode
                 onComplete()
             }
         )
-    }
-
-    private fun loadForm(
-
-        activity: Activity,
-
-        consentInformation:
-        ConsentInformation,
-
-        onComplete: () -> Unit
-
-    ) {
-
-        UserMessagingPlatform
-            .loadConsentForm(
-
-                activity,
-
-                { form ->
-
-                    if (
-                        consentInformation
-                            .consentStatus ==
-                        ConsentInformation
-                            .ConsentStatus
-                            .REQUIRED
-                    ) {
-
-                        form.show(activity) {
-
-                            onComplete()
-                        }
-
-                    } else {
-
-                        onComplete()
-                    }
-                },
-
-                {
-
-                    onComplete()
-                }
-            )
     }
 }
