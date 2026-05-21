@@ -41,8 +41,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var mainContainer: LinearLayout
     private var interstitialAd: InterstitialAd? = null
     private var clickCount = 0
-
-    // Prevent duplicate initialization calls across asynchronous threads
     private var isMobileAdsInitializeCalled = AtomicBoolean(false)
 
     // GitHub Build Process Replacements
@@ -72,20 +70,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. Force strict Vertical Portrait Orientation
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-
-        // 2. Configure edge-to-edge system window display profiles
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Main Base Frame Layer
         val drawerLayout = DrawerLayout(this)
         drawerLayout.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
 
-        // Core Layout Content Module Container
         mainContainer = LinearLayout(this)
         mainContainer.orientation = LinearLayout.VERTICAL
         mainContainer.layoutParams = LinearLayout.LayoutParams(
@@ -93,7 +86,6 @@ class MainActivity : ComponentActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT
         )
 
-        // Dynamically compute system padding shifts to avoid status/nav bar clips
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             mainContainer.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -143,7 +135,6 @@ class MainActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
-            // Dom and JavaScript Security Options
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.loadsImagesAutomatically = true
@@ -151,7 +142,6 @@ class MainActivity : ComponentActivity() {
             settings.allowContentAccess = true
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-            // Standard Stable Mobile Chrome UserAgent Override to prevent Google OAuth 403 blocks
             val chromeUserAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
             settings.userAgentString = chromeUserAgent
 
@@ -163,7 +153,6 @@ class MainActivity : ComponentActivity() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val urlStr = request?.url?.toString() ?: ""
 
-                    // Track click iterations cleanly inside structural application nodes
                     clickCount++
                     if (clickCount >= 4) {
                         showInterstitial()
@@ -186,7 +175,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // --- Swipe to Refresh Accent Controls ---
         swipeRefreshLayout = SwipeRefreshLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -217,14 +205,13 @@ class MainActivity : ComponentActivity() {
                 val defaultUrl = "URL_PLACEHOLDER"
                 val defaultType = "CONTENT_TYPE_PLACEHOLDER"
                 if (defaultType == "WEBSITE") {
-                    webView.loadUrl(defaultUrl)
+                    loadSecureUrl(defaultUrl)
                 } else {
-                    webView.loadUrl("file:///android_asset/index.html")
+                    loadSecureUrl("file:///android_asset/index.html")
                 }
                 true
             }
 
-            // Custom Menu Link Injections backed by defensive parsing
             if (dItem0Title.isNotBlank() && !dItem0Title.contains("PLACEHOLDER") && dItem0Url.isNotBlank()) {
                 menu.add(dItem0Title).setOnMenuItemClickListener {
                     drawerLayout.closeDrawers()
@@ -266,19 +253,18 @@ class MainActivity : ComponentActivity() {
 
         setContentView(drawerLayout)
 
-        // --- Base Routing Handlers ---
+        // Initial Routing Setup
         val contentType = "CONTENT_TYPE_PLACEHOLDER"
         val dataPayload = "HTML_CODE_PLACEHOLDER"
         val urlPayload = "URL_PLACEHOLDER"
 
         when (contentType) {
-            "WEBSITE" -> webView.loadUrl(urlPayload)
+            "WEBSITE" -> loadSecureUrl(urlPayload)
             "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
-            "HTML_FILE" -> webView.loadUrl(dataPayload)
-            else -> webView.loadUrl("file:///android_asset/index.html")
+            "HTML_FILE" -> loadSecureUrl(dataPayload)
+            else -> loadSecureUrl("file:///android_asset/index.html")
         }
 
-        // Back-Press Dispatch Handler Setup
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (drawerLayout.isDrawerOpen(Gravity.START)) {
@@ -291,7 +277,6 @@ class MainActivity : ComponentActivity() {
             }
         })
 
-        // --- Run Consent Validation & Ad Execution Sequence ---
         ConsentManager.requestConsent(this) {
             val consentInformation = UserMessagingPlatform.getConsentInformation(this)
             if (consentInformation.canRequestAds()) {
@@ -301,15 +286,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun initializeMobileAdsSdk() {
-        // Enforce singular execution logic path across async updates
         if (isMobileAdsInitializeCalled.getAndSet(true)) {
             return
         }
-
         MobileAds.initialize(this) {
-            runOnUiThread {
-                setupMonetizationFeatures()
-            }
+            runOnUiThread { setupMonetizationFeatures() }
         }
     }
 
@@ -365,20 +346,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Strips string replacements artifacts and validates secure absolute targets
+    // Completely forces hard loading frame targets safely across background task workers
     private fun loadSecureUrl(rawUrl: String) {
         var cleanUrl = rawUrl.trim()
+            .replace("\"", "")
+            .replace("'", "")
 
-        if (cleanUrl.contains("drawer_item_") || cleanUrl.contains("DRAWER_ITEM_")) {
-            if (cleanUrl.contains("http")) {
-                cleanUrl = cleanUrl.substring(cleanUrl.lastIndexOf("http"))
-            }
+        if (cleanUrl.isBlank() || cleanUrl.contains("PLACEHOLDER") || cleanUrl.contains("drawer_item_")) {
+            return
         }
 
-        if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
-            webView.loadUrl(cleanUrl)
+        if (cleanUrl.contains("http")) {
+            cleanUrl = cleanUrl.substring(cleanUrl.indexOf("http"))
+        }
+
+        val targetUrl = if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://") || cleanUrl.startsWith("file:///")) {
+            cleanUrl
         } else {
-            webView.loadUrl("https://$cleanUrl")
+            "https://$cleanUrl"
+        }
+
+        runOnUiThread {
+            webView.stopLoading()
+            webView.clearHistory() // Ensures navigation loops reset cleanly for side menu clicks
+            webView.loadUrl(targetUrl)
         }
     }
 }
