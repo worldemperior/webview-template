@@ -113,7 +113,7 @@ jobs:
             FINAL_TITLEBAR="false"
           else
             FINAL_DRAWER="$USE_DRAWER"
-            FINAL_RATING="$USE_RATING"
+              FINAL_RATING="$USE_RATING"
             FINAL_TITLEBAR="$USE_TITLEBAR"
           fi
             
@@ -129,11 +129,12 @@ jobs:
             
           # Dynamic Manifest Routing Optimization: Bypass Splash Activity completely if unchecked
           if [ "$SHOW_SPLASH" = "false" ]; then
-            echo "Bypassing Splash Screen: Routing launcher rules straight to MainActivity..."
-            # Remove SplashActivity declaration element block entirely
-            sed -i '/<activity android:name="\.SplashActivity"/,/<\/activity>/d' "$TARGET_MANIFEST"
+            echo "Bypassing Splash Screen: Stripping SplashActivity from Manifest routing table..."
             
-            # Restructure MainActivity element layout block to become the absolute entry point launcher
+            # Line-by-line precise manifest scrubbing to prevent block parsing matching errors
+            sed -i '/android:name="\.SplashActivity"/,+6d' "$TARGET_MANIFEST"
+            
+            # Convert MainActivity into the core Launcher target entrypoint configuration
             sed -i 's|<activity android:name="\.MainActivity"/>|<activity android:name="\.MainActivity" android:exported="true" android:screenOrientation="portrait"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>|g' "$TARGET_MANIFEST"
           fi
             

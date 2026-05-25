@@ -59,17 +59,20 @@ class MainActivity : ComponentActivity() {
     private val dItem0Url = "DRAWER_LINK_0_CUSTOM"
 
     private val dItem1Title = "DRAWER_TITLE_1_CUSTOM"
-    private val dItem1Url = "DRAWER_LINK_0_CUSTOM"
+    private val dItem1Url = "DRAWER_LINK_1_CUSTOM"
 
     private val dItem2Title = "DRAWER_TITLE_2_CUSTOM"
-    private val dItem2Url = "DRAWER_LINK_0_CUSTOM"
+    private val dItem2Url = "DRAWER_LINK_2_CUSTOM"
 
     private val dItem3Title = "DRAWER_TITLE_3_CUSTOM"
-    private val dItem3Url = "DRAWER_LINK_0_CUSTOM"
+    private val dItem3Url = "DRAWER_LINK_3_CUSTOM"
 
     @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Read Content Type immediately at initialization to verify downstream pipeline rule behaviors
+        val contentType = "CONTENT_TYPE_PLACEHOLDER"
 
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -176,8 +179,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val contentType = "CONTENT_TYPE_PLACEHOLDER"
-
         swipeRefreshLayout = SwipeRefreshLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -187,7 +188,7 @@ class MainActivity : ComponentActivity() {
             setColorSchemeColors(0xFF007AFF.toInt())
             setOnRefreshListener { webView.reload() }
 
-            // Disable swipe refresh layout handling completely if bundle target relies on local HTML assets
+            // Explicitly force drop pull-to-refresh execution gestures when running local HTML instances
             if (contentType == "HTML_FILE") {
                 isEnabled = false
             }
