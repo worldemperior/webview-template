@@ -59,13 +59,13 @@ class MainActivity : ComponentActivity() {
     private val dItem0Url = "DRAWER_LINK_0_CUSTOM"
 
     private val dItem1Title = "DRAWER_TITLE_1_CUSTOM"
-    private val dItem1Url = "DRAWER_LINK_1_CUSTOM"
+    private val dItem1Url = "DRAWER_LINK_0_CUSTOM"
 
     private val dItem2Title = "DRAWER_TITLE_2_CUSTOM"
-    private val dItem2Url = "DRAWER_LINK_2_CUSTOM"
+    private val dItem2Url = "DRAWER_LINK_0_CUSTOM"
 
     private val dItem3Title = "DRAWER_TITLE_3_CUSTOM"
-    private val dItem3Url = "DRAWER_LINK_3_CUSTOM"
+    private val dItem3Url = "DRAWER_LINK_0_CUSTOM"
 
     @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -176,6 +176,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        val contentType = "CONTENT_TYPE_PLACEHOLDER"
+
         swipeRefreshLayout = SwipeRefreshLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -184,6 +186,12 @@ class MainActivity : ComponentActivity() {
             )
             setColorSchemeColors(0xFF007AFF.toInt())
             setOnRefreshListener { webView.reload() }
+
+            // Disable swipe refresh layout handling completely if bundle target relies on local HTML assets
+            if (contentType == "HTML_FILE") {
+                isEnabled = false
+            }
+
             addView(webView)
         }
         mainContainer.addView(swipeRefreshLayout)
@@ -204,8 +212,7 @@ class MainActivity : ComponentActivity() {
             menu.add("Home Portal").setOnMenuItemClickListener {
                 drawerLayout.closeDrawers()
                 val defaultUrl = "URL_BASE_MAIN"
-                val defaultType = "CONTENT_TYPE_PLACEHOLDER"
-                if (defaultType == "WEBSITE") {
+                if (contentType == "WEBSITE") {
                     loadSecureUrl(defaultUrl)
                 } else {
                     loadSecureUrl("file:///android_asset/index.html")
@@ -254,14 +261,13 @@ class MainActivity : ComponentActivity() {
 
         setContentView(drawerLayout)
 
-        val contentType = "CONTENT_TYPE_PLACEHOLDER"
         val dataPayload = "HTML_CODE_PLACEHOLDER"
         val urlPayload = "URL_BASE_MAIN"
 
         when (contentType) {
             "WEBSITE" -> loadSecureUrl(urlPayload)
             "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
-            "HTML_FILE" -> loadSecureUrl(dataPayload)
+            "HTML_FILE" -> loadSecureUrl("file:///android_asset/index.html")
             else -> loadSecureUrl("file:///android_asset/index.html")
         }
 
