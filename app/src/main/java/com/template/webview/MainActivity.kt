@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
     private val useRating = false
     private val useTitleBar = false
     private val titleText = "My App"
+    private val showSplashEnabled = "SHOW_SPLASH_PLACEHOLDER"
 
     // Custom Webview Navigation Drawer Keys (Changed to prevent global SED text collision)
     private val dItem0Title = "DRAWER_TITLE_0_CUSTOM"
@@ -257,11 +258,22 @@ class MainActivity : ComponentActivity() {
         val dataPayload = "HTML_CODE_PLACEHOLDER"
         val urlPayload = "URL_BASE_MAIN"
 
-        when (contentType) {
-            "WEBSITE" -> loadSecureUrl(urlPayload)
-            "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
-            "HTML_FILE" -> loadSecureUrl(dataPayload)
-            else -> loadSecureUrl("file:///android_asset/index.html")
+        // Handle splash visibility behavior or default placeholder drop straight to Web Core setup
+        if (showSplashEnabled == "false") {
+            when (contentType) {
+                "WEBSITE" -> loadSecureUrl(urlPayload)
+                "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
+                "HTML_FILE" -> loadSecureUrl(dataPayload)
+                else -> loadSecureUrl("file:///android_asset/index.html")
+            }
+        } else {
+            // Standard placeholder boot path fallback logic if splash sequence execution configuration target is true/active
+            when (contentType) {
+                "WEBSITE" -> loadSecureUrl(urlPayload)
+                "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
+                "HTML_FILE" -> loadSecureUrl(dataPayload)
+                else -> loadSecureUrl("file:///android_asset/index.html")
+            }
         }
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
