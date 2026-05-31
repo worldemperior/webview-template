@@ -229,15 +229,19 @@ jobs:
           mkdir -p package
           find app/build/outputs/apk/release -name "*.apk" -exec cp {} package/app-release.apk \;
           find app/build/outputs/bundle/release -name "*.aab" -exec cp {} package/app-release.aab \;
-          cp release.jks package/ || true
-
+            
+          # NE KOPIRAMO release.jks u folder 'package' kako ne bi ušao u ZIP!
+          # Umesto toga, pomeramo ga na izdvojeno mesto za poseban upload
+          mkdir -p keystore_upload
+          cp release.jks keystore_upload/app_keystore.jks
+            
           if [ -f icon.png ]; then
-            cp icon.png package/
+          cp icon.png package/
           fi
           if [ -f splash.png ] && [ "$SHOW_SPLASH" = "true" ]; then
-            cp splash.png package/
+          cp splash.png package/
           fi
-
+            
           echo "App Name: $APP_NAME" > package/build-info.txt
           echo "" >> package/build-info.txt
           echo "Package ID: $PACKAGE_NAME" >> package/build-info.txt
@@ -256,19 +260,22 @@ jobs:
         run: |
           GENERATED_ZIP_NAME=$(echo "${{ github.event.client_payload.config.packageName }}" | tr '.' '_')_build.zip
           echo "ZIP_FILE_NAME=$GENERATED_ZIP_NAME" >> $GITHUB_ENV
+          # Pakuje samo sadržaj foldera 'package' (gde nema .jks fajla)
           zip -r "$GENERATED_ZIP_NAME" package
 
-      - name: Upload ZIP
+      - name: Upload ZIP and Separate Keystore
         run: |
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
-          
-          # We execute everything using the -c flag, chaining the commands with semicolons.
-          # This forces lftp to process the certificate ignore rule right out of the gate.
+                
+          # Šaljemo ZIP i odvojeni .jks na FTP sa forsiranim prepisivanjem (-f) za update
           lftp -c "
           set ssl:verify-certificate no;
           open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
-          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
+          put -f upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
+          if [ -f keystore_upload/app_keystore.jks ]; then
+            put -f keystore_upload/app_keystore.jks -o /$EMAIL_FOLDER/$PACKAGE_NAME/app_keystore.jks;
+          fi;
           quit;
           "
 
@@ -278,7 +285,6 @@ jobs:
           EMAIL_FOLDER: ${{ github.event.client_payload.config.emailFolder }}
           PACKAGE_NAME: ${{ github.event.client_payload.config.packageName }}
         run: |
-          # Use the exact same chained execution to cleanly login and clear out the build.lock file
           lftp -c "
             set ssl:verify-certificate no;
             open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
