@@ -102,10 +102,10 @@ jobs:
           PACKAGE_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
           TARGET_MAIN_FILE="app/src/main/java/$PACKAGE_DIR/MainActivity.kt"
           TARGET_MANIFEST="app/src/main/AndroidManifest.xml"
-            
+          
           echo "Targeting source file at: $TARGET_MAIN_FILE"
           echo "Targeting manifest file at: $TARGET_MANIFEST"
-            
+          
           # Enforce conditional layout rules: if HTML_FILE is used, policy overrides must be completely disabled
           if [ "$CONTENT_TYPE" = "HTML_FILE" ]; then
             FINAL_DRAWER="false"
@@ -113,42 +113,42 @@ jobs:
             FINAL_TITLEBAR="false"
           else
             FINAL_DRAWER="$USE_DRAWER"
-              FINAL_RATING="$USE_RATING"
+            FINAL_RATING="$USE_RATING"
             FINAL_TITLEBAR="$USE_TITLEBAR"
           fi
-            
+          
           # Inject Policy and Splash Configurations securely into template code locations
           sed -i "s/private val useDrawer = false/private val useDrawer = $FINAL_DRAWER/g" "$TARGET_MAIN_FILE"
           sed -i "s/private val useRating = false/private val useRating = $FINAL_RATING/g" "$TARGET_MAIN_FILE"
           sed -i "s/private val useTitleBar = false/private val useTitleBar = $FINAL_TITLEBAR/g" "$TARGET_MAIN_FILE"
           sed -i "s/private val showSplashEnabled = \"SHOW_SPLASH_PLACEHOLDER\"/private val showSplashEnabled = \"$SHOW_SPLASH\"/g" "$TARGET_MAIN_FILE"
-            
+          
           if [ ! -z "$TITLE_TEXT" ] && [ "$CONTENT_TYPE" != "HTML_FILE" ]; then
             sed -i "s/\"My App\"/\"$TITLE_TEXT\"/g" "$TARGET_MAIN_FILE"
           fi
-            
+          
           # Dynamic Manifest Routing Optimization: Bypass Splash Activity completely if unchecked
           if [ "$SHOW_SPLASH" = "false" ]; then
             echo "Bypassing Splash Screen: Stripping SplashActivity from Manifest routing table..."
-            
+          
             # Line-by-line precise manifest scrubbing to prevent block parsing matching errors
             sed -i '/android:name="\.SplashActivity"/,+6d' "$TARGET_MANIFEST"
-            
+          
             # Convert MainActivity into the core Launcher target entrypoint configuration
             sed -i 's|<activity android:name="\.MainActivity"/>|<activity android:name="\.MainActivity" android:exported="true" android:screenOrientation="portrait"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>|g' "$TARGET_MANIFEST"
           fi
-            
+          
           # Specific targeted single-file replacements first to prevent global sed overlap leaks
           sed -i "s|DRAWER_LINK_0_CUSTOM|$DRAWER_ITEM_0_URL|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_LINK_1_CUSTOM|$DRAWER_ITEM_1_URL|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_LINK_2_CUSTOM|$DRAWER_ITEM_2_URL|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_LINK_3_CUSTOM|$DRAWER_ITEM_3_URL|g" "$TARGET_MAIN_FILE"
-            
+          
           sed -i "s|DRAWER_TITLE_0_CUSTOM|$DRAWER_ITEM_0_TITLE|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_TITLE_1_CUSTOM|$DRAWER_ITEM_1_TITLE|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_TITLE_2_CUSTOM|$DRAWER_ITEM_2_TITLE|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_TITLE_3_CUSTOM|$DRAWER_ITEM_3_TITLE|g" "$TARGET_MAIN_FILE"
-            
+          
           # Global asset replacement runs safely now
           find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
           find . -type f -exec sed -i "s|URL_BASE_MAIN|$WEBSITE_URL|g" {} +
@@ -229,19 +229,19 @@ jobs:
           mkdir -p package
           find app/build/outputs/apk/release -name "*.apk" -exec cp {} package/app-release.apk \;
           find app/build/outputs/bundle/release -name "*.aab" -exec cp {} package/app-release.aab \;
-            
+          
           # NE KOPIRAMO release.jks u folder 'package' kako ne bi ušao u ZIP!
           # Umesto toga, pomeramo ga na izdvojeno mesto za poseban upload
           mkdir -p keystore_upload
           cp release.jks keystore_upload/app_keystore.jks
-            
+          
           if [ -f icon.png ]; then
-          cp icon.png package/
+            cp icon.png package/
           fi
           if [ -f splash.png ] && [ "$SHOW_SPLASH" = "true" ]; then
-          cp splash.png package/
+            cp splash.png package/
           fi
-            
+          
           echo "App Name: $APP_NAME" > package/build-info.txt
           echo "" >> package/build-info.txt
           echo "Package ID: $PACKAGE_NAME" >> package/build-info.txt
@@ -267,15 +267,19 @@ jobs:
         run: |
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
-                
-          # Šaljemo ZIP i odvojeni .jks na FTP sa forsiranim prepisivanjem (-f) za update
+          
+          # Pripremamo komandu u Bash-u pre slanja u lftp sesiju
+          KEYSTORE_FTP_CMD=""
+          if [ -f keystore_upload/app_keystore.jks ]; then
+            KEYSTORE_FTP_CMD="put keystore_upload/app_keystore.jks -o /$EMAIL_FOLDER/$PACKAGE_NAME/app_keystore.jks;"
+          fi
+          
+          # Pokrećemo lftp bez nepostojećih -f opcija i sa preprocesovanim komandama
           lftp -c "
           set ssl:verify-certificate no;
           open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
-          put -f upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
-          if [ -f keystore_upload/app_keystore.jks ]; then
-            put -f keystore_upload/app_keystore.jks -o /$EMAIL_FOLDER/$PACKAGE_NAME/app_keystore.jks;
-          fi;
+          put upload/$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME -o /$EMAIL_FOLDER/$PACKAGE_NAME/$ZIP_FILE_NAME;
+          $KEYSTORE_FTP_CMD
           quit;
           "
 
