@@ -5,9 +5,7 @@ on:
     types: [build-apk]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     env:
@@ -31,8 +29,6 @@ jobs:
       KEY_PASSWORD: ${{ github.event.client_payload.config.keyPassword }}
       ZIP_NAME: ${{ github.event.client_payload.config.zipName }}
       SHOW_SPLASH: ${{ github.event.client_payload.config.showSplash }}
-
-      # Custom App Navigation Menu Items
       DRAWER_ITEM_0_TITLE: ${{ github.event.client_payload.config.drawerItems[0].title || '' }}
       DRAWER_ITEM_0_URL: ${{ github.event.client_payload.config.drawerItems[0].url || '' }}
       DRAWER_ITEM_1_TITLE: ${{ github.event.client_payload.config.drawerItems[1].title || '' }}
@@ -41,15 +37,12 @@ jobs:
       DRAWER_ITEM_2_URL: ${{ github.event.client_payload.config.drawerItems[2].url || '' }}
       DRAWER_ITEM_3_TITLE: ${{ github.event.client_payload.config.drawerItems[3].title || '' }}
       DRAWER_ITEM_3_URL: ${{ github.event.client_payload.config.drawerItems[3].url || '' }}
-
-      # Anti-Rejection Policy Variables
       USE_DRAWER: ${{ github.event.client_payload.config.useDrawer }}
       USE_RATING: ${{ github.event.client_payload.config.useRating }}
       USE_TITLEBAR: ${{ github.event.client_payload.config.useTitleBar }}
       TITLE_TEXT: ${{ github.event.client_payload.config.titleBarText }}
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -71,27 +64,29 @@ jobs:
           echo "USE_DRAWER=$USE_DRAWER"
           echo "USE_RATING=$USE_RATING"
           echo "USE_TITLEBAR=$USE_TITLEBAR"
+          echo "TITLE_TEXT=$TITLE_TEXT"
           echo "SHOW_SPLASH=$SHOW_SPLASH"
+          echo "CONTENT_TYPE=$CONTENT_TYPE"
+          echo "DRAWER_ITEM_0_TITLE=$DRAWER_ITEM_0_TITLE"
+          echo "DRAWER_ITEM_0_URL=$DRAWER_ITEM_0_URL"
+          echo "DRAWER_ITEM_1_TITLE=$DRAWER_ITEM_1_TITLE"
+          echo "DRAWER_ITEM_1_URL=$DRAWER_ITEM_1_URL"
+          echo "DRAWER_ITEM_2_TITLE=$DRAWER_ITEM_2_TITLE"
+          echo "DRAWER_ITEM_2_URL=$DRAWER_ITEM_2_URL"
+          echo "DRAWER_ITEM_3_TITLE=$DRAWER_ITEM_3_TITLE"
+          echo "DRAWER_ITEM_3_URL=$DRAWER_ITEM_3_URL"
 
       - name: Replace Application ID and Namespace
         run: |
-          # 1. Update the applicationId and namespace in the build configuration
           sed -i "s|applicationId = \"com.template.webview\"|applicationId = \"$PACKAGE_NAME\"|" app/build.gradle.kts
           sed -i "s|namespace = \"com.template.webview\"|namespace = \"$PACKAGE_NAME\"|" app/build.gradle.kts
 
-      - name: Refactor Kotlin Packages & Directory Structure
+      - name: Refactor Kotlin Packages and Directory Structure
         run: |
-          # 2. Globally replace the package reference inside all files (Kotlin source files, manifests, layouts)
-          find . -type f \( -name "*.kt" -or -name "*.xml" -or -name "*.gradle*" \) -exec sed -i "s|com.template.webview|$PACKAGE_NAME|g" {} +
-          
-          # 3. Physically move files to a folder path matching the new package name
-          # Convert 'com.example.app' into 'com/example/app'
+          find . -type f \( -name "*.kt" -or -name "*.xml" -or -name "*.gradle*" \) \
+            -exec sed -i "s|com.template.webview|$PACKAGE_NAME|g" {} +
           NEW_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
-          
-          # Create the new directory path inside your project source directories
           mkdir -p "app/src/main/java/$NEW_DIR"
-          
-          # If files exist in the old folder structure, move them to the new folder structure
           if [ -d "app/src/main/java/com/template/webview" ]; then
             mv app/src/main/java/com/template/webview/* "app/src/main/java/$NEW_DIR/"
             rm -rf app/src/main/java/com/template
@@ -102,93 +97,115 @@ jobs:
           PACKAGE_DIR=$(echo "$PACKAGE_NAME" | tr '.' '/')
           TARGET_MAIN_FILE="app/src/main/java/$PACKAGE_DIR/MainActivity.kt"
           TARGET_MANIFEST="app/src/main/AndroidManifest.xml"
-          
+
           echo "Targeting source file at: $TARGET_MAIN_FILE"
           echo "Targeting manifest file at: $TARGET_MANIFEST"
-          
-          # Enforce conditional layout rules: if HTML_FILE is used, policy overrides must be completely disabled
+
+          if [ "$USE_DRAWER" = "true" ];   then FINAL_DRAWER="true";   else FINAL_DRAWER="false";   fi
+          if [ "$USE_RATING" = "true" ];   then FINAL_RATING="true";   else FINAL_RATING="false";   fi
+          if [ "$USE_TITLEBAR" = "true" ]; then FINAL_TITLEBAR="true"; else FINAL_TITLEBAR="false"; fi
+
           if [ "$CONTENT_TYPE" = "HTML_FILE" ]; then
             FINAL_DRAWER="false"
             FINAL_RATING="false"
             FINAL_TITLEBAR="false"
-          else
-            FINAL_DRAWER="$USE_DRAWER"
-            FINAL_RATING="$USE_RATING"
-            FINAL_TITLEBAR="$USE_TITLEBAR"
           fi
-          
-          # Inject Policy and Splash Configurations securely into template code locations
-          sed -i "s/private val useDrawer = false/private val useDrawer = $FINAL_DRAWER/g" "$TARGET_MAIN_FILE"
-          sed -i "s/private val useRating = false/private val useRating = $FINAL_RATING/g" "$TARGET_MAIN_FILE"
-          sed -i "s/private val useTitleBar = false/private val useTitleBar = $FINAL_TITLEBAR/g" "$TARGET_MAIN_FILE"
-          sed -i "s/private val showSplashEnabled = \"SHOW_SPLASH_PLACEHOLDER\"/private val showSplashEnabled = \"$SHOW_SPLASH\"/g" "$TARGET_MAIN_FILE"
-          
+
+          echo "FINAL_DRAWER=$FINAL_DRAWER"
+          echo "FINAL_RATING=$FINAL_RATING"
+          echo "FINAL_TITLEBAR=$FINAL_TITLEBAR"
+
+          sed -i "s|private val useDrawer = false|private val useDrawer = $FINAL_DRAWER|g" "$TARGET_MAIN_FILE"
+          sed -i "s|private val useRating = false|private val useRating = $FINAL_RATING|g" "$TARGET_MAIN_FILE"
+          sed -i "s|private val useTitleBar = false|private val useTitleBar = $FINAL_TITLEBAR|g" "$TARGET_MAIN_FILE"
+          sed -i "s|private val showSplashEnabled = \"SHOW_SPLASH_PLACEHOLDER\"|private val showSplashEnabled = \"$SHOW_SPLASH\"|g" "$TARGET_MAIN_FILE"
+
           if [ ! -z "$TITLE_TEXT" ] && [ "$CONTENT_TYPE" != "HTML_FILE" ]; then
-            sed -i "s/\"My App\"/\"$TITLE_TEXT\"/g" "$TARGET_MAIN_FILE"
+            python3 << 'PYEOF'
+          import os
+          title = os.environ.get("TITLE_TEXT", "")
+          target = os.environ.get("TARGET_MAIN_FILE", "")
+          with open(target, "r") as f:
+              content = f.read()
+          content = content.replace(
+              'private val titleText = "My App"',
+              'private val titleText = "' + title + '"'
+          )
+          with open(target, "w") as f:
+              f.write(content)
+          print("Title text injected: " + title)
+          PYEOF
           fi
-          
-          # Dynamic Manifest Routing Optimization: Bypass Splash Activity completely if unchecked
+
           if [ "$SHOW_SPLASH" = "false" ]; then
-            echo "Bypassing Splash Screen: Stripping SplashActivity from Manifest routing table..."
-          
-            # Line-by-line precise manifest scrubbing to prevent block parsing matching errors
+            echo "Bypassing Splash Screen: Stripping SplashActivity from Manifest..."
             sed -i '/android:name="\.SplashActivity"/,+6d' "$TARGET_MANIFEST"
-          
-            # Convert MainActivity into the core Launcher target entrypoint configuration
             sed -i 's|<activity android:name="\.MainActivity"/>|<activity android:name="\.MainActivity" android:exported="true" android:screenOrientation="portrait"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>|g' "$TARGET_MANIFEST"
           fi
-          
-          # Specific targeted single-file replacements first to prevent global sed overlap leaks
+
           sed -i "s|DRAWER_LINK_0_CUSTOM|$DRAWER_ITEM_0_URL|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_LINK_1_CUSTOM|$DRAWER_ITEM_1_URL|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_LINK_2_CUSTOM|$DRAWER_ITEM_2_URL|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_LINK_3_CUSTOM|$DRAWER_ITEM_3_URL|g" "$TARGET_MAIN_FILE"
-          
+
           sed -i "s|DRAWER_TITLE_0_CUSTOM|$DRAWER_ITEM_0_TITLE|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_TITLE_1_CUSTOM|$DRAWER_ITEM_1_TITLE|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_TITLE_2_CUSTOM|$DRAWER_ITEM_2_TITLE|g" "$TARGET_MAIN_FILE"
           sed -i "s|DRAWER_TITLE_3_CUSTOM|$DRAWER_ITEM_3_TITLE|g" "$TARGET_MAIN_FILE"
-          
-          # Global asset replacement runs safely now
-          find . -type f -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
-          find . -type f -exec sed -i "s|URL_BASE_MAIN|$WEBSITE_URL|g" {} +
-          find . -type f -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
-          find . -type f -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|$BANNER_AD_ID|g" {} +
-          find . -type f -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|$INTERSTITIAL_AD_ID|g" {} +
-          find . -type f -exec sed -i "s|VERSION_NAME_PLACEHOLDER|$VERSION_NAME|g" {} +
-          find . -type f -exec sed -i "s|VERSION_CODE_PLACEHOLDER|$VERSION_CODE|g" {} +
-          find . -type f -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|$CONTENT_TYPE|g" {} +
-          find . -type f -exec sed -i "s|HTML_CODE_PLACEHOLDER|$HTML_CODE|g" {} +
+
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|APP_NAME_PLACEHOLDER|$APP_NAME|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|URL_BASE_MAIN|$WEBSITE_URL|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|ADMOB_APP_ID_PLACEHOLDER|$ADMOB_APP_ID|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|BANNER_AD_ID_PLACEHOLDER|$BANNER_AD_ID|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|INTERSTITIAL_AD_ID_PLACEHOLDER|$INTERSTITIAL_AD_ID|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|VERSION_NAME_PLACEHOLDER|$VERSION_NAME|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|VERSION_CODE_PLACEHOLDER|$VERSION_CODE|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|CONTENT_TYPE_PLACEHOLDER|$CONTENT_TYPE|g" {} +
+          find . -type f \( -name "*.kt" -o -name "*.xml" -o -name "*.gradle*" \) \
+            -exec sed -i "s|HTML_CODE_PLACEHOLDER|$HTML_CODE|g" {} +
+
+          echo "=== Verification: injected values ==="
+          grep -n "useDrawer\|useRating\|useTitleBar\|titleText\|showSplash" "$TARGET_MAIN_FILE" || true
 
       - name: Download Images
         run: |
           if [ ! -z "$ICON_URL" ]; then
-            wget "$ICON_URL" -O icon.png || true
+            wget --timeout=30 --tries=3 "$ICON_URL" -O icon.png || true
           fi
           if [ ! -z "$SPLASH_URL" ] && [ "$SHOW_SPLASH" = "true" ]; then
-            wget "$SPLASH_URL" -O splash.png || true
+            wget --timeout=30 --tries=3 "$SPLASH_URL" -O splash.png || true
           fi
 
       - name: Download HTML File
         run: |
           mkdir -p app/src/main/assets
           if [ "$CONTENT_TYPE" = "HTML_FILE" ]; then
-            wget "$HTML_CODE" -O app/src/main/assets/index.html || true
+            wget --timeout=30 --tries=3 "$HTML_CODE" -O app/src/main/assets/index.html || {
+              echo "HTML download failed — writing fallback page"
+              echo "<html><body><p>Content failed to load.</p></body></html>" > app/src/main/assets/index.html
+            }
           fi
 
       - name: Generate Launcher Icons
         run: |
           if [ -f icon.png ]; then
-            convert icon.png -resize 48x48 app/src/main/res/mipmap-mdpi/ic_launcher.png
-            convert icon.png -resize 72x72 app/src/main/res/mipmap-hdpi/ic_launcher.png
-            convert icon.png -resize 96x96 app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            convert icon.png -resize 48x48   app/src/main/res/mipmap-mdpi/ic_launcher.png
+            convert icon.png -resize 72x72   app/src/main/res/mipmap-hdpi/ic_launcher.png
+            convert icon.png -resize 96x96   app/src/main/res/mipmap-xhdpi/ic_launcher.png
             convert icon.png -resize 144x144 app/src/main/res/mipmap-xxhdpi/ic_launcher.png
             convert icon.png -resize 192x192 app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-
-            cp app/src/main/res/mipmap-mdpi/ic_launcher.png app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-            cp app/src/main/res/mipmap-hdpi/ic_launcher.png app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-            cp app/src/main/res/mipmap-xhdpi/ic_launcher.png app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-            cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-mdpi/ic_launcher.png    app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-hdpi/ic_launcher.png    app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xhdpi/ic_launcher.png   app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+            cp app/src/main/res/mipmap-xxhdpi/ic_launcher.png  app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
             cp app/src/main/res/mipmap-xxxhdpi/ic_launcher.png app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
           fi
 
@@ -206,7 +223,7 @@ jobs:
       - name: Prepare Keystore
         run: |
           if [ "$GENERATE_KEYSTORE" = "false" ]; then
-            wget "$KEYSTORE_URL" -O release.jks
+            wget --timeout=30 --tries=3 "$KEYSTORE_URL" -O release.jks
           else
             keytool -genkey -v \
               -keystore release.jks \
@@ -227,54 +244,51 @@ jobs:
       - name: Prepare Package
         run: |
           mkdir -p package
-          find app/build/outputs/apk/release -name "*.apk" -exec cp {} package/app-release.apk \;
+          find app/build/outputs/apk/release   -name "*.apk" -exec cp {} package/app-release.apk \;
           find app/build/outputs/bundle/release -name "*.aab" -exec cp {} package/app-release.aab \;
-          
-          # NE KOPIRAMO release.jks u folder 'package' kako ne bi ušao u ZIP!
-          # Umesto toga, pomeramo ga na izdvojeno mesto za poseban upload
           mkdir -p keystore_upload
           cp release.jks keystore_upload/app_keystore.jks
-          
           if [ -f icon.png ]; then
             cp icon.png package/
           fi
           if [ -f splash.png ] && [ "$SHOW_SPLASH" = "true" ]; then
             cp splash.png package/
           fi
-          
-          echo "App Name: $APP_NAME" > package/build-info.txt
-          echo "" >> package/build-info.txt
-          echo "Package ID: $PACKAGE_NAME" >> package/build-info.txt
-          echo "" >> package/build-info.txt
-          echo "Version Name: $VERSION_NAME" >> package/build-info.txt
-          echo "" >> package/build-info.txt
-          echo "Version Code: $VERSION_CODE" >> package/build-info.txt
-          echo "" >> package/build-info.txt
-          echo "Keystore Password: $KEYSTORE_PASSWORD" >> package/build-info.txt
-          echo "" >> package/build-info.txt
-          echo "Key Alias: $KEY_ALIAS" >> package/build-info.txt
-          echo "" >> package/build-info.txt
-          echo "Key Password: $KEY_PASSWORD" >> package/build-info.txt
+          cat > package/build-info.txt << EOF
+          App Name: $APP_NAME
+
+          Package ID: $PACKAGE_NAME
+
+          Version Name: $VERSION_NAME
+
+          Version Code: $VERSION_CODE
+
+          Keystore Password: $KEYSTORE_PASSWORD
+
+          Key Alias: $KEY_ALIAS
+
+          Key Password: $KEY_PASSWORD
+
+          Build Date: $(date -u '+%Y-%m-%d %H:%M UTC')
+
+          IMPORTANT: Keep this file somewhere safe.
+          You need your keystore password every time you update your app on Google Play.
+          EOF
 
       - name: Create ZIP
         run: |
           GENERATED_ZIP_NAME=$(echo "${{ github.event.client_payload.config.packageName }}" | tr '.' '_')_build.zip
           echo "ZIP_FILE_NAME=$GENERATED_ZIP_NAME" >> $GITHUB_ENV
-          # Pakuje samo sadržaj foldera 'package' (gde nema .jks fajla)
           zip -r "$GENERATED_ZIP_NAME" package
 
       - name: Upload ZIP and Separate Keystore
         run: |
           mkdir -p upload/$EMAIL_FOLDER/$PACKAGE_NAME
           mv "$ZIP_FILE_NAME" upload/$EMAIL_FOLDER/$PACKAGE_NAME/
-          
-          # Pripremamo komandu u Bash-u pre slanja u lftp sesiju
           KEYSTORE_FTP_CMD=""
           if [ -f keystore_upload/app_keystore.jks ]; then
             KEYSTORE_FTP_CMD="put keystore_upload/app_keystore.jks -o /$EMAIL_FOLDER/$PACKAGE_NAME/app_keystore.jks;"
           fi
-          
-          # Pokrećemo lftp bez nepostojećih -f opcija i sa preprocesovanim komandama
           lftp -c "
           set ssl:verify-certificate no;
           open -u '${{ secrets.FTP_USERNAME }}','${{ secrets.FTP_PASSWORD }}' '${{ secrets.FTP_SERVER }}';
