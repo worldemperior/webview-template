@@ -1,46 +1,48 @@
 package com.template.webview
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.WindowManager
 import android.widget.ImageView
 import androidx.activity.ComponentActivity
+import androidx.core.view.WindowCompat
 
 class SplashActivity : ComponentActivity() {
 
-    override fun onCreate(
-        savedInstanceState: Bundle?
-    ) {
+    private val handler = Handler(Looper.getMainLooper())
 
+    override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val image =
-            ImageView(this)
+        // ── Fix #1: hide status bar for true full-screen splash ───────────────
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor    = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
 
-        image.setImageResource(
-            R.drawable.splash_image
-        )
+        // ── Fix #2: prevent screen from sleeping during splash ────────────────
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        image.scaleType =
-            ImageView.ScaleType.CENTER_CROP
-
+        val image = ImageView(this).apply {
+            setImageResource(R.drawable.splash_image)
+            scaleType = ImageView.ScaleType.CENTER_CROP
+        }
         setContentView(image)
 
-        Handler(
-            Looper.getMainLooper()
-        ).postDelayed({
-
-            startActivity(
-
-                Intent(
-                    this,
-                    MainActivity::class.java
-                )
-            )
-
-            finish()
-
+        handler.postDelayed({
+            // ── Fix #3: check activity is still alive before starting ─────────
+            if (!isFinishing && !isDestroyed) {
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
+            }
         }, 2000)
+    }
+
+    // ── Fix #4: cancel handler if user somehow leaves during splash ───────────
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
     }
 }

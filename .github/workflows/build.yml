@@ -162,18 +162,23 @@ jobs:
 
       - name: Download Images
         run: |
+          # Fix: timeout + fallback so build never hangs on slow image servers
           if [ ! -z "$ICON_URL" ]; then
-            wget "$ICON_URL" -O icon.png || true
+            wget --timeout=30 --tries=3 "$ICON_URL" -O icon.png || true
           fi
           if [ ! -z "$SPLASH_URL" ] && [ "$SHOW_SPLASH" = "true" ]; then
-            wget "$SPLASH_URL" -O splash.png || true
+            wget --timeout=30 --tries=3 "$SPLASH_URL" -O splash.png || true
           fi
 
       - name: Download HTML File
         run: |
           mkdir -p app/src/main/assets
           if [ "$CONTENT_TYPE" = "HTML_FILE" ]; then
-            wget "$HTML_CODE" -O app/src/main/assets/index.html || true
+            # Fix: add timeout and retry flags to prevent hanging builds
+            wget --timeout=30 --tries=3 "$HTML_CODE" -O app/src/main/assets/index.html || {
+              echo "HTML download failed — using fallback blank page"
+              echo "<html><body><p>Content failed to load.</p></body></html>" > app/src/main/assets/index.html
+            }
           fi
 
       - name: Generate Launcher Icons
