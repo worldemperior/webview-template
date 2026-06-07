@@ -4,20 +4,18 @@ import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.ActivityInfo
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
-import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
@@ -41,51 +39,45 @@ class MainActivity : ComponentActivity() {
     private lateinit var webView: WebView
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var mainContainer: LinearLayout
-    private lateinit var drawerLayout: DrawerLayout
-
-    // ── Fix #1: track ad view for lifecycle management ────────────────────────
-    private var adView: AdView? = null
     private var interstitialAd: InterstitialAd? = null
     private var clickCount = 0
     private var isMobileAdsInitializeCalled = AtomicBoolean(false)
 
-    // ── Fix #2: track if interstitial is already loading to avoid double loads ─
-    private var isInterstitialLoading = false
-
     // GitHub Build Process Replacements
-    private val bannerAdId       = "BANNER_AD_ID_PLACEHOLDER"
+    private val bannerAdId = "BANNER_AD_ID_PLACEHOLDER"
     private val interstitialAdId = "INTERSTITIAL_AD_ID_PLACEHOLDER"
 
     // Dynamic Anti-Rejection Policy Configurations
-    private val useDrawer          = false
-    private val useRating          = false
-    private val useTitleBar        = false
-    private val titleText          = "My App"
-    private val showSplashEnabled  = "SHOW_SPLASH_PLACEHOLDER"
+    private val useDrawer = false
+    private val useRating = false
+    private val useTitleBar = false
+    private val titleText = "My App"
+    private val showSplashEnabled = "SHOW_SPLASH_PLACEHOLDER"
 
     // Custom Webview Navigation Drawer Keys
     private val dItem0Title = "DRAWER_TITLE_0_CUSTOM"
-    private val dItem0Url   = "DRAWER_LINK_0_CUSTOM"
-    private val dItem1Title = "DRAWER_TITLE_1_CUSTOM"
-    private val dItem1Url   = "DRAWER_LINK_1_CUSTOM"
-    private val dItem2Title = "DRAWER_TITLE_2_CUSTOM"
-    private val dItem2Url   = "DRAWER_LINK_2_CUSTOM"
-    private val dItem3Title = "DRAWER_TITLE_3_CUSTOM"
-    private val dItem3Url   = "DRAWER_LINK_3_CUSTOM"
+    private val dItem0Url = "DRAWER_LINK_0_CUSTOM"
 
-    @SuppressLint("SetJavaScriptEnabled")
+    private val dItem1Title = "DRAWER_TITLE_1_CUSTOM"
+    private val dItem1Url = "DRAWER_LINK_1_CUSTOM"
+
+    private val dItem2Title = "DRAWER_TITLE_2_CUSTOM"
+    private val dItem2Url = "DRAWER_LINK_2_CUSTOM"
+
+    private val dItem3Title = "DRAWER_TITLE_3_CUSTOM"
+    private val dItem3Url = "DRAWER_LINK_3_CUSTOM"
+
+    @SuppressLint("SetJavaScriptEnabled", "WrongConstant")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Read Content Type immediately at initialization to verify downstream pipeline rule behaviors
         val contentType = "CONTENT_TYPE_PLACEHOLDER"
 
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // ── Fix #3: make window background black to prevent white flash ────────
-        window.decorView.setBackgroundColor(Color.WHITE)
-
-        drawerLayout = DrawerLayout(this)
+        val drawerLayout = DrawerLayout(this)
         drawerLayout.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -93,21 +85,18 @@ class MainActivity : ComponentActivity() {
 
         mainContainer = LinearLayout(this)
         mainContainer.orientation = LinearLayout.VERTICAL
-        mainContainer.layoutParams = DrawerLayout.LayoutParams(
+        mainContainer.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
 
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            mainContainer.setPadding(
-                systemBars.left, systemBars.top,
-                systemBars.right, systemBars.bottom
-            )
+            mainContainer.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
 
-        // ── Title bar ─────────────────────────────────────────────────────────
+        // --- OPTION: Anti-Rejection Top Header Bar ---
         if (useTitleBar) {
             val titleBar = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -143,41 +132,19 @@ class MainActivity : ComponentActivity() {
             mainContainer.addView(titleBar)
         }
 
-        // ── Fix #4: loading progress bar so users see something is happening ──
-        val progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                8
-            )
-            max = 100
-            visibility = android.view.View.VISIBLE
-        }
-        mainContainer.addView(progressBar)
-
-        // ── WebView setup ─────────────────────────────────────────────────────
+        // --- Core Engine Setup: WebView Instance ---
         webView = WebView(this).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
 
-            settings.javaScriptEnabled      = true
-            settings.domStorageEnabled       = true
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
             settings.loadsImagesAutomatically = true
-            settings.allowFileAccess         = true
-            settings.allowContentAccess      = true
-            settings.mixedContentMode        = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-
-            // ── Fix #5: enable caching for faster repeat loads ─────────────────
-            settings.cacheMode = WebSettings.LOAD_DEFAULT
-
-            // ── Fix #6: enable zoom support — useful for website content ───────
-            settings.setSupportZoom(true)
-            settings.builtInZoomControls  = true
-            settings.displayZoomControls  = false   // hide the ugly +/- buttons
-
-            // ── Fix #7: enable media autoplay (needed for HTML games/videos) ───
-            settings.mediaPlaybackRequiresUserGesture = false
+            settings.allowFileAccess = true
+            settings.allowContentAccess = true
+            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
             val chromeUserAgent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
             settings.userAgentString = chromeUserAgent
@@ -186,86 +153,28 @@ class MainActivity : ComponentActivity() {
             cookieManager.setAcceptCookie(true)
             cookieManager.setAcceptThirdPartyCookies(this, true)
 
-            // ── Fix #8: WebChromeClient for progress bar + file upload support ─
-            webChromeClient = object : WebChromeClient() {
-                override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                    progressBar.progress = newProgress
-                    progressBar.visibility = if (newProgress < 100) {
-                        android.view.View.VISIBLE
-                    } else {
-                        android.view.View.GONE
-                    }
-                }
-
-                // ── Fix #9: handle <input type="file"> for HTML apps ──────────
-                override fun onShowFileChooser(
-                    webView: WebView?,
-                    filePathCallback: android.webkit.ValueCallback<Array<Uri>>?,
-                    fileChooserParams: FileChooserParams?
-                ): Boolean {
-                    // Basic passthrough — works for most file input use cases
-                    filePathCallback?.onReceiveValue(null)
-                    return true
-                }
-            }
-
             webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(
-                    view: WebView?,
-                    request: WebResourceRequest?
-                ): Boolean {
+                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                     val urlStr = request?.url?.toString() ?: ""
 
-                    // ── Fix #10: don't count back/forward navigation as clicks ─
-                    if (request?.isRedirect == false && request.hasGesture()) {
-                        clickCount++
-                        if (clickCount >= 4) {
-                            showInterstitial()
-                            clickCount = 0
-                        }
+                    clickCount++
+                    if (clickCount >= 4) {
+                        showInterstitial()
+                        clickCount = 0
                     }
 
-                    // Handle standard http/https — load in WebView
                     if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
                         return false
                     }
-
-                    // ── Fix #11: handle mailto, tel, intent links properly ─────
                     return try {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(urlStr))
-                        if (intent.resolveActivity(packageManager) != null) {
-                            startActivity(intent)
-                        }
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlStr)))
                         true
-                    } catch (e: Exception) {
-                        true
-                    }
+                    } catch (e: Exception) { true }
                 }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
                     swipeRefreshLayout.isRefreshing = false
-                }
-
-                // ── Fix #12: basic error page so users aren't left with blank ─
-                override fun onReceivedError(
-                    view: WebView?,
-                    errorCode: Int,
-                    description: String?,
-                    failingUrl: String?
-                ) {
-                    super.onReceivedError(view, errorCode, description, failingUrl)
-                    if (contentType == "WEBSITE") {
-                        view?.loadData(
-                            """
-                            <html><body style="font-family:sans-serif;text-align:center;padding:40px;">
-                            <h2>⚠️ No Connection</h2>
-                            <p>Please check your internet connection and pull down to refresh.</p>
-                            </body></html>
-                            """.trimIndent(),
-                            "text/html", "UTF-8"
-                        )
-                    }
                 }
             }
         }
@@ -278,14 +187,19 @@ class MainActivity : ComponentActivity() {
             )
             setColorSchemeColors(0xFF007AFF.toInt())
             setOnRefreshListener { webView.reload() }
-            isEnabled = contentType != "HTML_FILE"
+
+            // Explicitly force drop pull-to-refresh execution gestures when running local HTML instances
+            if (contentType == "HTML_FILE") {
+                isEnabled = false
+            }
+
             addView(webView)
         }
         mainContainer.addView(swipeRefreshLayout)
 
         drawerLayout.addView(mainContainer)
 
-        // ── Navigation drawer ─────────────────────────────────────────────────
+        // --- OPTION: Anti-Rejection Navigation Side Menu ---
         if (useDrawer) {
             val navigationView = NavigationView(this)
             val params = DrawerLayout.LayoutParams(
@@ -296,10 +210,11 @@ class MainActivity : ComponentActivity() {
 
             val menu = navigationView.menu
 
-            menu.add("Home").setOnMenuItemClickListener {
+            menu.add("Home Portal").setOnMenuItemClickListener {
                 drawerLayout.closeDrawers()
+                val defaultUrl = "URL_BASE_MAIN"
                 if (contentType == "WEBSITE") {
-                    loadSecureUrl("URL_BASE_MAIN")
+                    loadSecureUrl(defaultUrl)
                 } else {
                     loadSecureUrl("file:///android_asset/index.html")
                 }
@@ -308,28 +223,38 @@ class MainActivity : ComponentActivity() {
 
             if (dItem0Title.isNotBlank() && !dItem0Title.contains("CUSTOM") && dItem0Url.isNotBlank()) {
                 menu.add(dItem0Title).setOnMenuItemClickListener {
-                    drawerLayout.closeDrawers(); loadSecureUrl(dItem0Url); true
+                    drawerLayout.closeDrawers()
+                    loadSecureUrl(dItem0Url)
+                    true
                 }
             }
             if (dItem1Title.isNotBlank() && !dItem1Title.contains("CUSTOM") && dItem1Url.isNotBlank()) {
                 menu.add(dItem1Title).setOnMenuItemClickListener {
-                    drawerLayout.closeDrawers(); loadSecureUrl(dItem1Url); true
+                    drawerLayout.closeDrawers()
+                    loadSecureUrl(dItem1Url)
+                    true
                 }
             }
             if (dItem2Title.isNotBlank() && !dItem2Title.contains("CUSTOM") && dItem2Url.isNotBlank()) {
                 menu.add(dItem2Title).setOnMenuItemClickListener {
-                    drawerLayout.closeDrawers(); loadSecureUrl(dItem2Url); true
+                    drawerLayout.closeDrawers()
+                    loadSecureUrl(dItem2Url)
+                    true
                 }
             }
             if (dItem3Title.isNotBlank() && !dItem3Title.contains("CUSTOM") && dItem3Url.isNotBlank()) {
                 menu.add(dItem3Title).setOnMenuItemClickListener {
-                    drawerLayout.closeDrawers(); loadSecureUrl(dItem3Url); true
+                    drawerLayout.closeDrawers()
+                    loadSecureUrl(dItem3Url)
+                    true
                 }
             }
 
             if (useRating) {
-                menu.add("⭐ Rate Our App").setOnMenuItemClickListener {
-                    drawerLayout.closeDrawers(); triggerRatingSystem(); true
+                menu.add("Rate Our App").setOnMenuItemClickListener {
+                    drawerLayout.closeDrawers()
+                    triggerRatingSystem()
+                    true
                 }
             }
             drawerLayout.addView(navigationView)
@@ -337,33 +262,28 @@ class MainActivity : ComponentActivity() {
 
         setContentView(drawerLayout)
 
-        // ── Fix #13: restore WebView state on rotation/recreation ─────────────
-        if (savedInstanceState != null) {
-            webView.restoreState(savedInstanceState)
-        } else {
-            val dataPayload = "HTML_CODE_PLACEHOLDER"
-            val urlPayload  = "URL_BASE_MAIN"
+        val dataPayload = "HTML_CODE_PLACEHOLDER"
+        val urlPayload = "URL_BASE_MAIN"
 
-            when (contentType) {
-                "WEBSITE"   -> loadSecureUrl(urlPayload)
-                "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
-                "HTML_FILE" -> loadSecureUrl("file:///android_asset/index.html")
-                else        -> loadSecureUrl("file:///android_asset/index.html")
-            }
+        when (contentType) {
+            "WEBSITE" -> loadSecureUrl(urlPayload)
+            "HTML_CODE" -> webView.loadDataWithBaseURL(null, dataPayload, "text/html", "UTF-8", null)
+            "HTML_FILE" -> loadSecureUrl("file:///android_asset/index.html")
+            else -> loadSecureUrl("file:///android_asset/index.html")
         }
 
-        // ── Back press handler ────────────────────────────────────────────────
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                when {
-                    drawerLayout.isDrawerOpen(Gravity.START) -> drawerLayout.closeDrawer(Gravity.START)
-                    webView.canGoBack()                       -> webView.goBack()
-                    else                                      -> finish()
+                if (drawerLayout.isDrawerOpen(Gravity.START)) {
+                    drawerLayout.closeDrawer(Gravity.START)
+                } else if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    finish()
                 }
             }
         })
 
-        // ── Consent + ads init ────────────────────────────────────────────────
         ConsentManager.requestConsent(this) {
             val consentInformation = UserMessagingPlatform.getConsentInformation(this)
             if (consentInformation.canRequestAds()) {
@@ -372,35 +292,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ── Fix #14: proper lifecycle — pause/resume WebView and ads ─────────────
-    override fun onResume() {
-        super.onResume()
-        webView.onResume()
-        adView?.resume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        webView.onPause()
-        adView?.pause()
-    }
-
-    // ── Fix #15: destroy WebView and ads properly to prevent memory leaks ────
-    override fun onDestroy() {
-        adView?.destroy()
-        webView.stopLoading()
-        webView.destroy()
-        super.onDestroy()
-    }
-
-    // ── Fix #16: save WebView state so back/forward history survives rotation ─
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        webView.saveState(outState)
-    }
-
     private fun initializeMobileAdsSdk() {
-        if (isMobileAdsInitializeCalled.getAndSet(true)) return
+        if (isMobileAdsInitializeCalled.getAndSet(true)) {
+            return
+        }
         MobileAds.initialize(this) {
             runOnUiThread { setupMonetizationFeatures() }
         }
@@ -408,7 +303,7 @@ class MainActivity : ComponentActivity() {
 
     private fun setupMonetizationFeatures() {
         if (bannerAdId != "BANNER_DISABLED" && !bannerAdId.contains("PLACEHOLDER")) {
-            adView = AdView(this).apply {
+            val adView = AdView(this).apply {
                 setAdSize(AdSize.BANNER)
                 adUnitId = bannerAdId
                 layoutParams = LinearLayout.LayoutParams(
@@ -417,7 +312,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
             mainContainer.addView(adView)
-            adView?.loadAd(AdRequest.Builder().build())
+            adView.loadAd(AdRequest.Builder().build())
         }
 
         if (interstitialAdId != "INTERSTITIAL_DISABLED" && !interstitialAdId.contains("PLACEHOLDER")) {
@@ -427,10 +322,10 @@ class MainActivity : ComponentActivity() {
 
     private fun triggerRatingSystem() {
         AlertDialog.Builder(this)
-            .setTitle("Enjoying $titleText?")
-            .setMessage("If you like the app, a quick rating on Google Play helps us a lot!")
+            .setTitle("Support Our Community!")
+            .setMessage("If you enjoy using $titleText, please share your thoughts on the Google Play Store.")
             .setCancelable(true)
-            .setPositiveButton("⭐ Rate Us") { dialog, _ ->
+            .setPositiveButton("Rate Us 5 Stars") { dialog, _ ->
                 dialog.dismiss()
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")))
@@ -443,24 +338,11 @@ class MainActivity : ComponentActivity() {
             .show()
     }
 
-    // ── Fix #17: guard against loading while already loading ─────────────────
     private fun loadInterstitial() {
-        if (isInterstitialLoading || interstitialAd != null) return
-        isInterstitialLoading = true
-        InterstitialAd.load(
-            this,
-            interstitialAdId,
-            AdRequest.Builder().build(),
-            object : InterstitialAdLoadCallback() {
-                override fun onAdLoaded(ad: InterstitialAd) {
-                    interstitialAd        = ad
-                    isInterstitialLoading = false
-                }
-                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                    isInterstitialLoading = false
-                }
-            }
-        )
+        val request = AdRequest.Builder().build()
+        InterstitialAd.load(this, interstitialAdId, request, object : InterstitialAdLoadCallback() {
+            override fun onAdLoaded(ad: InterstitialAd) { interstitialAd = ad }
+        })
     }
 
     private fun showInterstitial() {
@@ -476,19 +358,18 @@ class MainActivity : ComponentActivity() {
             .replace("\"", "")
             .replace("'", "")
 
-        if (cleanUrl.isBlank() ||
-            cleanUrl.contains("CUSTOM") ||
-            cleanUrl.contains("PLACEHOLDER")) return
+        if (cleanUrl.isBlank() || cleanUrl.contains("CUSTOM") || cleanUrl.contains("PLACEHOLDER")) {
+            return
+        }
 
         if (cleanUrl.contains("http")) {
             cleanUrl = cleanUrl.substring(cleanUrl.indexOf("http"))
         }
 
-        val targetUrl = when {
-            cleanUrl.startsWith("http://")    -> cleanUrl
-            cleanUrl.startsWith("https://")   -> cleanUrl
-            cleanUrl.startsWith("file:///")   -> cleanUrl
-            else                              -> "https://$cleanUrl"
+        val targetUrl = if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://") || cleanUrl.startsWith("file:///")) {
+            cleanUrl
+        } else {
+            "https://$cleanUrl"
         }
 
         runOnUiThread {
