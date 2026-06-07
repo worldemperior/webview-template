@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var swipeRefreshLayout: SwipeRefreshLayout
     private lateinit var mainContainer: LinearLayout
 
-    // Keep drawerLayout as field so back handler and lifecycle can access it
+    // Keep drawerLayout as a field so back handler and lifecycle can access it
     private lateinit var drawerLayout: DrawerLayout
 
     // Track AdView for proper lifecycle management
@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
     private var clickCount = 0
     private var isMobileAdsInitializeCalled = AtomicBoolean(false)
 
-    // Guard against stacking interstitial load calls
+    // Guard against stacking multiple interstitial load calls
     private var isInterstitialLoading = false
 
     // GitHub Build Process Replacements
@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Prevent white flash on launch
+        // Prevent white flash on cold launch
         window.decorView.setBackgroundColor(Color.WHITE)
 
         drawerLayout = DrawerLayout(this)
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
 
         mainContainer = LinearLayout(this)
         mainContainer.orientation = LinearLayout.VERTICAL
-        // Use DrawerLayout.LayoutParams so the drawer knows this is the main content view
+        // Must be DrawerLayout.LayoutParams so the drawer recognises this as main content
         mainContainer.layoutParams = DrawerLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
             mainContainer.addView(titleBar)
         }
 
-        // ── Loading progress bar ──────────────────────────────────────────────
+        // ── Progress bar — shows page load progress, hides when done ──────────
         val progressBar = ProgressBar(
             this, null,
             android.R.attr.progressBarStyleHorizontal
@@ -178,13 +178,13 @@ class MainActivity : ComponentActivity() {
             settings.allowContentAccess       = true
             settings.mixedContentMode         = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
-            // Enable caching for faster repeat loads
+            // Cache pages for faster repeat visits
             settings.cacheMode = WebSettings.LOAD_DEFAULT
 
             // Zoom support — useful for website content
             settings.setSupportZoom(true)
-            settings.builtInZoomControls  = true
-            settings.displayZoomControls  = false
+            settings.builtInZoomControls = true
+            settings.displayZoomControls = false
 
             // Allow media autoplay — needed for HTML games and videos
             settings.mediaPlaybackRequiresUserGesture = false
@@ -196,7 +196,7 @@ class MainActivity : ComponentActivity() {
             cookieManager.setAcceptCookie(true)
             cookieManager.setAcceptThirdPartyCookies(this, true)
 
-            // WebChromeClient — drives progress bar
+            // WebChromeClient drives the progress bar
             webChromeClient = object : WebChromeClient() {
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
                     progressBar.progress   = newProgress
@@ -215,7 +215,7 @@ class MainActivity : ComponentActivity() {
                 ): Boolean {
                     val urlStr = request?.url?.toString() ?: ""
 
-                    // Only count genuine user-initiated navigations for interstitial trigger
+                    // Only count genuine user taps for interstitial trigger
                     if (request?.hasGesture() == true && request.isRedirect == false) {
                         clickCount++
                         if (clickCount >= 4) {
@@ -224,12 +224,12 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Load http/https inside WebView
+                    // Load http/https inside the WebView
                     if (urlStr.startsWith("http://") || urlStr.startsWith("https://")) {
                         return false
                     }
 
-                    // Handle mailto:, tel:, intent:// etc via system
+                    // Hand off mailto:, tel:, intent:// etc to the system
                     return try {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(urlStr))
                         if (intent.resolveActivity(packageManager) != null) {
@@ -246,8 +246,8 @@ class MainActivity : ComponentActivity() {
                     swipeRefreshLayout.isRefreshing = false
                 }
 
-                // Show a friendly error page instead of a blank screen
-                @Deprecated("Needed for API < 23 compatibility")
+                // Show a friendly offline page instead of a blank screen
+                @Deprecated("Required for API < 23 compatibility")
                 override fun onReceivedError(
                     view: WebView?,
                     errorCode: Int,
@@ -260,9 +260,13 @@ class MainActivity : ComponentActivity() {
                         view?.loadData(
                             """
                             <html>
-                            <body style="font-family:sans-serif;text-align:center;padding:40px;margin-top:80px;">
+                            <body style="font-family:sans-serif;text-align:center;
+                                         padding:40px;margin-top:80px;">
                             <h2>⚠️ No Connection</h2>
-                            <p style="color:#666;">Please check your internet connection<br>and pull down to refresh.</p>
+                            <p style="color:#666;">
+                                Please check your internet connection<br>
+                                and pull down to refresh.
+                            </p>
                             </body>
                             </html>
                             """.trimIndent(),
@@ -282,7 +286,7 @@ class MainActivity : ComponentActivity() {
             )
             setColorSchemeColors(0xFF007AFF.toInt())
             setOnRefreshListener { webView.reload() }
-            // Disable pull-to-refresh for local HTML — it has no effect and confuses users
+            // Disable pull-to-refresh for local HTML — meaningless and confusing
             if (contentType == "HTML_FILE") {
                 isEnabled = false
             }
@@ -358,8 +362,7 @@ class MainActivity : ComponentActivity() {
         val dataPayload = "HTML_CODE_PLACEHOLDER"
         val urlPayload  = "URL_BASE_MAIN"
 
-        // Restore WebView state on recreation (e.g. screen rotation)
-        // otherwise load fresh content
+        // Restore WebView state after rotation; otherwise load fresh content
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {
@@ -394,7 +397,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ── Lifecycle — forward to WebView and AdView ─────────────────────────────
+    // ── Lifecycle — forward events to WebView and AdView ──────────────────────
     override fun onResume() {
         super.onResume()
         webView.onResume()
@@ -414,7 +417,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    // Save WebView navigation history so back/forward survives rotation
+    // Persist WebView navigation history across rotation
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         webView.saveState(outState)
@@ -443,13 +446,14 @@ class MainActivity : ComponentActivity() {
         }
 
         if (interstitialAdId != "INTERSTITIAL_DISABLED" &&
-            !interstitialAdId.contains("PLACEHOLDER")) {
+            !interstitialAdId.contains("PLACEHOLDER")
+        ) {
             loadInterstitial()
         }
     }
 
     private fun loadInterstitial() {
-        // Guard against stacking multiple simultaneous load requests
+        // Prevent stacking multiple simultaneous load requests
         if (isInterstitialLoading || interstitialAd != null) return
         isInterstitialLoading = true
         InterstitialAd.load(
@@ -483,7 +487,8 @@ class MainActivity : ComponentActivity() {
         AlertDialog.Builder(this)
             .setTitle("Support Our Community!")
             .setMessage(
-                "If you enjoy using $titleText, please share your thoughts on the Google Play Store."
+                "If you enjoy using $titleText, please share your " +
+                        "thoughts on the Google Play Store."
             )
             .setCancelable(true)
             .setPositiveButton("Rate Us 5 Stars") { dialog, _ ->
@@ -499,7 +504,9 @@ class MainActivity : ComponentActivity() {
                     startActivity(
                         Intent(
                             Intent.ACTION_VIEW,
-                            Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                            Uri.parse(
+                                "https://play.google.com/store/apps/details?id=$packageName"
+                            )
                         )
                     )
                 }
@@ -517,7 +524,8 @@ class MainActivity : ComponentActivity() {
 
         if (cleanUrl.isBlank() ||
             cleanUrl.contains("CUSTOM") ||
-            cleanUrl.contains("PLACEHOLDER")) {
+            cleanUrl.contains("PLACEHOLDER")
+        ) {
             return
         }
 
@@ -525,9 +533,11 @@ class MainActivity : ComponentActivity() {
             cleanUrl = cleanUrl.substring(cleanUrl.indexOf("http"))
         }
 
-        val targetUrl = if (cleanUrl.startsWith("http://") ||
+        val targetUrl = if (
+            cleanUrl.startsWith("http://") ||
             cleanUrl.startsWith("https://") ||
-            cleanUrl.startsWith("file:///")) {
+            cleanUrl.startsWith("file:///")
+        ) {
             cleanUrl
         } else {
             "https://$cleanUrl"

@@ -12,18 +12,18 @@ import androidx.core.view.WindowCompat
 
 class SplashActivity : ComponentActivity() {
 
-    // Keep reference so we can cancel it in onDestroy
+    // Keep reference so we can cancel it safely in onDestroy
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // True full-screen splash — hide status and navigation bars
+        // True full-screen splash — transparent status and nav bars
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor     = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
 
-        // Prevent screen from dimming during the splash delay
+        // Keep screen on during the 2-second delay
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         val image = ImageView(this).apply {
@@ -33,7 +33,7 @@ class SplashActivity : ComponentActivity() {
         setContentView(image)
 
         handler.postDelayed({
-            // Guard: only navigate if the activity is still alive
+            // Only navigate if the activity is still alive
             if (!isFinishing && !isDestroyed) {
                 startActivity(Intent(this, MainActivity::class.java))
                 finish()
@@ -42,7 +42,7 @@ class SplashActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        // Cancel pending navigation if user somehow dismisses during splash
+        // Cancel pending callback to prevent leaks if user exits during splash
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
