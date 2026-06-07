@@ -112,9 +112,9 @@ jobs:
             FINAL_RATING="false"
             FINAL_TITLEBAR="false"
           else
-            if [ "$USE_DRAWER" = "true" ];   then FINAL_DRAWER="true";   else FINAL_DRAWER="false";   fi
-            if [ "$USE_RATING" = "true" ];   then FINAL_RATING="true";   else FINAL_RATING="false";   fi
-            if [ "$USE_TITLEBAR" = "true" ]; then FINAL_TITLEBAR="true"; else FINAL_TITLEBAR="false"; fi
+            FINAL_DRAWER="$USE_DRAWER"
+            FINAL_RATING="$USE_RATING"
+            FINAL_TITLEBAR="$USE_TITLEBAR"
           fi
           
           # Inject Policy and Splash Configurations securely into template code locations
